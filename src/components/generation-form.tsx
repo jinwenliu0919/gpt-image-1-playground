@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import {
     Square,
     RectangleHorizontal,
@@ -22,14 +23,21 @@ import {
     Loader2,
     BrickWall,
     Lock,
-    LockOpen
+    LockOpen,
+    Link,
+    Unlink
 } from 'lucide-react';
 import * as React from 'react';
+
+export type AspectRatio = '1:1' | '16:9' | '4:3' | '3:2' | '3:4' | '2:3' | '9:16' | 'custom';
 
 export type GenerationFormData = {
     prompt: string;
     n: number;
-    size: '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
+    size: '1024x1024' | '1536x1024' | '1024x1536' | 'auto' | string;
+    aspectRatio: AspectRatio;
+    width?: number;
+    height?: number;
     quality: 'low' | 'medium' | 'high' | 'auto';
     output_format: 'png' | 'jpeg' | 'webp';
     output_compression?: number;
@@ -51,6 +59,12 @@ type GenerationFormProps = {
     setN: React.Dispatch<React.SetStateAction<number[]>>;
     size: GenerationFormData['size'];
     setSize: React.Dispatch<React.SetStateAction<GenerationFormData['size']>>;
+    aspectRatio: AspectRatio;
+    setAspectRatio: React.Dispatch<React.SetStateAction<AspectRatio>>;
+    width: number;
+    setWidth: React.Dispatch<React.SetStateAction<number>>;
+    height: number;
+    setHeight: React.Dispatch<React.SetStateAction<number>>;
     quality: GenerationFormData['quality'];
     setQuality: React.Dispatch<React.SetStateAction<GenerationFormData['quality']>>;
     outputFormat: GenerationFormData['output_format'];
@@ -101,6 +115,12 @@ export function GenerationForm({
     setN,
     size,
     setSize,
+    aspectRatio,
+    setAspectRatio,
+    width,
+    setWidth,
+    height,
+    setHeight,
     quality,
     setQuality,
     outputFormat,
@@ -113,13 +133,94 @@ export function GenerationForm({
     setModeration
 }: GenerationFormProps) {
     const showCompression = outputFormat === 'jpeg' || outputFormat === 'webp';
+    const [isCustomSize, setIsCustomSize] = React.useState(aspectRatio === 'custom');
+    const [maintainAspectRatio, setMaintainAspectRatio] = React.useState(true);
+
+    React.useEffect(() => {
+        setIsCustomSize(aspectRatio === 'custom');
+    }, [aspectRatio]);
+
+    // 根据宽高比例计算尺寸
+    React.useEffect(() => {
+        if (aspectRatio !== 'custom' && aspectRatio !== undefined) {
+            const [widthRatio, heightRatio] = aspectRatio.split(':').map(Number);
+            if (widthRatio && heightRatio) {
+                let newWidth, newHeight;
+                
+                // 根据比例设置合适的尺寸，确保最长边不超过1536，最短边不小于1024
+                if (widthRatio >= heightRatio) {
+                    newWidth = 1536;
+                    newHeight = Math.round((newWidth / widthRatio) * heightRatio);
+                    if (newHeight < 1024) {
+                        newHeight = 1024;
+                        newWidth = Math.round((newHeight / heightRatio) * widthRatio);
+                    }
+                } else {
+                    newHeight = 1536;
+                    newWidth = Math.round((newHeight / heightRatio) * widthRatio);
+                    if (newWidth < 1024) {
+                        newWidth = 1024;
+                        newHeight = Math.round((newWidth / widthRatio) * heightRatio);
+                    }
+                }
+                
+                setWidth(newWidth);
+                setHeight(newHeight);
+                setSize(`${newWidth}x${newHeight}`);
+            }
+        }
+    }, [aspectRatio, setWidth, setHeight, setSize]);
+
+    // 处理自定义宽度变化
+    const handleWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newWidth = parseInt(e.target.value, 10) || 0;
+        setWidth(newWidth);
+        
+        if (maintainAspectRatio && aspectRatio !== 'custom' && aspectRatio) {
+            const [widthRatio, heightRatio] = aspectRatio.split(':').map(Number);
+            if (widthRatio && heightRatio) {
+                const newHeight = Math.round((newWidth / widthRatio) * heightRatio);
+                setHeight(newHeight);
+                setSize(`${newWidth}x${newHeight}`);
+            }
+        } else {
+            setSize(`${newWidth}x${height}`);
+        }
+    };
+
+    // 处理自定义高度变化
+    const handleHeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newHeight = parseInt(e.target.value, 10) || 0;
+        setHeight(newHeight);
+        
+        if (maintainAspectRatio && aspectRatio !== 'custom' && aspectRatio) {
+            const [widthRatio, heightRatio] = aspectRatio.split(':').map(Number);
+            if (widthRatio && heightRatio) {
+                const newWidth = Math.round((newHeight / heightRatio) * widthRatio);
+                setWidth(newWidth);
+                setSize(`${newWidth}x${newHeight}`);
+            }
+        } else {
+            setSize(`${width}x${newHeight}`);
+        }
+    };
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        
+        // 确保尺寸格式正确
+        let finalSize = size;
+        if (aspectRatio === 'custom') {
+            finalSize = `${width}x${height}`;
+        }
+        
         const formData: GenerationFormData = {
             prompt,
             n: n[0],
-            size,
+            size: finalSize,
+            aspectRatio,
+            width,
+            height,
             quality,
             output_format: outputFormat,
             background,
@@ -188,28 +289,78 @@ export function GenerationForm({
                     </div>
 
                     <div className='space-y-2'>
-                        <Label className='block text-sm text-card-foreground'>尺寸</Label>
+                        <Label className='block text-sm text-card-foreground'>图片比例</Label>
                         <RadioGroup
-                            value={size}
-                            onValueChange={(value) => setSize(value as GenerationFormData['size'])}
+                            value={aspectRatio}
+                            onValueChange={(value) => setAspectRatio(value as AspectRatio)}
                             disabled={isLoading}
                             className='flex flex-wrap gap-x-4 gap-y-2'>
-                            <RadioItemWithIcon value='auto' id='size-auto' label='自动' Icon={Sparkles} />
-                            <RadioItemWithIcon value='1024x1024' id='size-square' label='正方形' Icon={Square} />
-                            <RadioItemWithIcon
-                                value='1536x1024'
-                                id='size-landscape'
-                                label='横向'
-                                Icon={RectangleHorizontal}
-                            />
-                            <RadioItemWithIcon
-                                value='1024x1536'
-                                id='size-portrait'
-                                label='纵向'
-                                Icon={RectangleVertical}
-                            />
+                            <RadioItemWithIcon value='1:1' id='ratio-1-1' label='1:1' Icon={Square} />
+                            <RadioItemWithIcon value='16:9' id='ratio-16-9' label='16:9' Icon={RectangleHorizontal} />
+                            <RadioItemWithIcon value='4:3' id='ratio-4-3' label='4:3' Icon={RectangleHorizontal} />
+                            <RadioItemWithIcon value='3:2' id='ratio-3-2' label='3:2' Icon={RectangleHorizontal} />
+                            <RadioItemWithIcon value='3:4' id='ratio-3-4' label='3:4' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='2:3' id='ratio-2-3' label='2:3' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='9:16' id='ratio-9-16' label='9:16' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='custom' id='ratio-custom' label='自定义' Icon={Sparkles} />
                         </RadioGroup>
                     </div>
+
+                    {isCustomSize && (
+                        <div className='space-y-2'>
+                            <div className='flex items-center justify-between'>
+                                <Label className='block text-sm text-card-foreground'>自定义尺寸</Label>
+                                <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={() => setMaintainAspectRatio(!maintainAspectRatio)}
+                                    className='h-8 px-2 text-xs'>
+                                    {maintainAspectRatio ? (
+                                        <Link className='mr-1 h-3.5 w-3.5' />
+                                    ) : (
+                                        <Unlink className='mr-1 h-3.5 w-3.5' />
+                                    )}
+                                    {maintainAspectRatio ? '保持比例' : '自由比例'}
+                                </Button>
+                            </div>
+                            <div className='flex gap-2'>
+                                <div className='w-1/2'>
+                                    <Label htmlFor='width' className='text-xs text-muted-foreground'>
+                                        宽度
+                                    </Label>
+                                    <Input
+                                        id='width'
+                                        type='number'
+                                        min='512'
+                                        max='1536'
+                                        value={width}
+                                        onChange={handleWidthChange}
+                                        disabled={isLoading}
+                                        className='h-8 text-sm'
+                                    />
+                                </div>
+                                <div className='w-1/2'>
+                                    <Label htmlFor='height' className='text-xs text-muted-foreground'>
+                                        高度
+                                    </Label>
+                                    <Input
+                                        id='height'
+                                        type='number'
+                                        min='512'
+                                        max='1536'
+                                        value={height}
+                                        onChange={handleHeightChange}
+                                        disabled={isLoading}
+                                        className='h-8 text-sm'
+                                    />
+                                </div>
+                            </div>
+                            <p className='text-xs text-muted-foreground'>
+                                尺寸: {width} x {height} ({size})
+                            </p>
+                        </div>
+                    )}
 
                     <div className='space-y-2'>
                         <Label className='block text-sm text-card-foreground'>质量</Label>

@@ -87,6 +87,9 @@ export default function HomePage() {
     const [genPrompt, setGenPrompt] = React.useState('');
     const [genN, setGenN] = React.useState([1]);
     const [genSize, setGenSize] = React.useState<GenerationFormData['size']>('auto');
+    const [genAspectRatio, setGenAspectRatio] = React.useState<'1:1' | '16:9' | '4:3' | '3:2' | '3:4' | '2:3' | '9:16' | 'custom'>('1:1');
+    const [genWidth, setGenWidth] = React.useState(1024);
+    const [genHeight, setGenHeight] = React.useState(1024);
     const [genQuality, setGenQuality] = React.useState<GenerationFormData['quality']>('auto');
     const [genOutputFormat, setGenOutputFormat] = React.useState<GenerationFormData['output_format']>('png');
     const [genCompression, setGenCompression] = React.useState([100]);
@@ -211,6 +214,12 @@ export default function HomePage() {
             apiFormData.append('prompt', genPrompt);
             apiFormData.append('n', genN[0].toString());
             apiFormData.append('size', genSize);
+            
+            if (genAspectRatio === 'custom' && genWidth && genHeight) {
+                apiFormData.append('width', genWidth.toString());
+                apiFormData.append('height', genHeight.toString());
+            }
+            
             apiFormData.append('quality', genQuality);
             apiFormData.append('output_format', genOutputFormat);
             if (
@@ -470,6 +479,12 @@ export default function HomePage() {
                                 setN={setGenN}
                                 size={genSize}
                                 setSize={setGenSize}
+                                aspectRatio={genAspectRatio}
+                                setAspectRatio={setGenAspectRatio}
+                                width={genWidth}
+                                setWidth={setGenWidth}
+                                height={genHeight}
+                                setHeight={setGenHeight}
                                 quality={genQuality}
                                 setQuality={setGenQuality}
                                 outputFormat={genOutputFormat}
