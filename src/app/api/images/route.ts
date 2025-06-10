@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import path from 'path';
+import fetch from 'node-fetch';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -174,35 +175,67 @@ export async function POST(request: NextRequest) {
 
         const savedImagesData = await Promise.all(
             result.data.map(async (imageData, index) => {
-                if (!imageData.b64_json) {
-                    console.error(`Image data ${index} is missing b64_json.`);
-                    throw new Error(`Image data at index ${index} is missing base64 data.`);
-                }
-                const buffer = Buffer.from(imageData.b64_json, 'base64');
                 const timestamp = Date.now();
-
                 const fileExtension = (formData.get('output_format') as string) || 'png';
                 const filename = `${timestamp}-${index}.${fileExtension}`;
+                
+                if (imageData.b64_json) {
+                    const buffer = Buffer.from(imageData.b64_json, 'base64');
 
-                if (effectiveStorageMode === 'fs') {
-                    const filepath = path.join(outputDir, filename);
-                    console.log(`Attempting to save image to: ${filepath}`);
-                    await fs.writeFile(filepath, buffer);
-                    console.log(`Successfully saved image: ${filename}`);
+                    if (effectiveStorageMode === 'fs') {
+                        const filepath = path.join(outputDir, filename);
+                        console.log(`Attempting to save image to: ${filepath}`);
+                        await fs.writeFile(filepath, buffer);
+                        console.log(`Successfully saved image: ${filename}`);
+                    }
+
+                    const imageResult: { filename: string; b64_json: string; path?: string; url?: string; output_format: string } = {
+                        filename: filename,
+                        b64_json: imageData.b64_json,
+                        output_format: fileExtension
+                    };
+
+                    if (effectiveStorageMode === 'fs') {
+                        imageResult.path = `/api/image/${filename}`;
+                    }
+
+                    return imageResult;
+                } else if (imageData.url) {
+                    console.log(`Image ${index} provided as URL: ${imageData.url}`);
+                    
+                    if (effectiveStorageMode === 'fs') {
+                        try {
+                            const response = await fetch(imageData.url);
+                            if (!response.ok) {
+                                throw new Error(`Failed to download image from URL: ${response.status} ${response.statusText}`);
+                            }
+                            const buffer = await response.buffer();
+                            
+                            const filepath = path.join(outputDir, filename);
+                            console.log(`Attempting to save image from URL to: ${filepath}`);
+                            await fs.writeFile(filepath, buffer);
+                            console.log(`Successfully saved image from URL: ${filename}`);
+                        } catch (downloadError: unknown) {
+                            console.error(`Error downloading image from URL: ${imageData.url}`, downloadError);
+                            throw new Error(`Failed to download image from URL: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
+                        }
+                    }
+                    
+                    const imageResult: { filename: string; url: string; path?: string; output_format: string } = {
+                        filename: filename,
+                        url: imageData.url,
+                        output_format: fileExtension
+                    };
+                    
+                    if (effectiveStorageMode === 'fs') {
+                        imageResult.path = `/api/image/${filename}`;
+                    }
+                    
+                    return imageResult;
                 } else {
+                    console.error(`Image data ${index} has neither b64_json nor url.`);
+                    throw new Error(`Image data at index ${index} is missing both base64 data and URL.`);
                 }
-
-                const imageResult: { filename: string; b64_json: string; path?: string; output_format: string } = {
-                    filename: filename,
-                    b64_json: imageData.b64_json,
-                    output_format: fileExtension
-                };
-
-                if (effectiveStorageMode === 'fs') {
-                    imageResult.path = `/api/image/${filename}`;
-                }
-
-                return imageResult;
             })
         );
 

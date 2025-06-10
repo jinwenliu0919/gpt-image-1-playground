@@ -1,24 +1,15 @@
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
+import { Header } from '@/components/header';
+import { HistoryProvider } from '@/contexts/HistoryContext';
 
-const geistSans = Geist({
-    variable: '--font-geist-sans',
-    subsets: ['latin']
-});
-
-const geistMono = Geist_Mono({
-    variable: '--font-geist-mono',
-    subsets: ['latin']
-});
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: 'gpt-image-1 playground',
-    description: "Generate and edit images using OpenAI's gpt-image-1 model.",
-    icons: {
-        icon: '/favicon.svg'
-    }
+    title: 'GPT Image Generation Playground',
+    description: 'A playground for generating images with DALL-E 3'
 };
 
 export default function RootLayout({
@@ -27,10 +18,17 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang='en' suppressHydrationWarning>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-                <ThemeProvider attribute='class' defaultTheme='dark' enableSystem={false} disableTransitionOnChange>
-                    {children}
+        <html lang='en' suppressHydrationWarning className='h-full'>
+            <body className={`${inter.className} h-full overflow-hidden`}>
+                <ThemeProvider defaultTheme='dark'>
+                    <HistoryProvider>
+                        <div className='flex flex-col h-full'>
+                            <Header />
+                            <div className='flex-1 overflow-y-auto'>
+                                {children}
+                            </div>
+                        </div>
+                    </HistoryProvider>
                 </ThemeProvider>
             </body>
         </html>

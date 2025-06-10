@@ -18,19 +18,19 @@ export function ModeToggle({ currentMode, onModeChange }: ModeToggleProps) {
                     value='generate'
                     className={`rounded-md border px-3 py-1 text-sm transition-colors ${
                         currentMode === 'generate'
-                            ? 'border-white bg-white text-black'
-                            : 'border-dashed border-white/30 bg-transparent text-white/60 hover:border-white/50 hover:text-white/80'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-dashed border-muted-foreground bg-transparent text-muted-foreground hover:border-card-foreground hover:text-card-foreground'
                     } `}>
-                    Generate
+                    生成
                 </TabsTrigger>
                 <TabsTrigger
                     value='edit'
                     className={`rounded-md border px-3 py-1 text-sm transition-colors ${
                         currentMode === 'edit'
-                            ? 'border-white bg-white text-black'
-                            : 'border-dashed border-white/30 bg-transparent text-white/60 hover:border-white/50 hover:text-white/80'
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-dashed border-muted-foreground bg-transparent text-muted-foreground hover:border-card-foreground hover:text-card-foreground'
                     } `}>
-                    Edit
+                    编辑
                 </TabsTrigger>
             </TabsList>
         </Tabs>

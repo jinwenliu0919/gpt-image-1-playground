@@ -96,10 +96,10 @@ const RadioItemWithIcon = ({
         <RadioGroupItem
             value={value}
             id={id}
-            className='border-white/40 text-white data-[state=checked]:border-white data-[state=checked]:text-white'
+            className='border-muted-foreground text-card-foreground data-[state=checked]:border-card-foreground data-[state=checked]:text-card-foreground'
         />
-        <Label htmlFor={id} className='flex cursor-pointer items-center gap-2 text-base text-white/80'>
-            <Icon className='h-5 w-5 text-white/60' />
+        <Label htmlFor={id} className='flex cursor-pointer items-center gap-2 text-base text-muted-foreground'>
+            <Icon className='h-5 w-5 text-muted-foreground' />
             {label}
         </Label>
     </div>
@@ -451,51 +451,51 @@ export function EditingForm({
     };
 
     return (
-        <Card className='flex h-full w-full flex-col overflow-hidden rounded-lg border border-white/10 bg-black'>
-            <CardHeader className='flex items-start justify-between border-b border-white/10 pb-4'>
+        <Card className='flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card'>
+            <CardHeader className='flex items-start justify-between border-b border-border pb-4'>
                 <div>
                     <div className='flex items-center'>
-                        <CardTitle className='py-1 text-lg font-medium text-white'>Edit Image</CardTitle>
+                        <CardTitle className='py-1 text-lg font-medium text-card-foreground'>编辑图像</CardTitle>
                         {isPasswordRequiredByBackend && (
                             <Button
                                 variant='ghost'
                                 size='icon'
                                 onClick={onOpenPasswordDialog}
-                                className='ml-2 text-white/60 hover:text-white'
-                                aria-label='Configure Password'>
+                                className='ml-2 text-muted-foreground hover:text-card-foreground'
+                                aria-label='配置密码'>
                                 {clientPasswordHash ? <Lock className='h-4 w-4' /> : <LockOpen className='h-4 w-4' />}
                             </Button>
                         )}
                     </div>
-                    <CardDescription className='mt-1 text-white/60'>Modify an image using gpt-image-1.</CardDescription>
+                    <CardDescription className='mt-1 text-muted-foreground'>使用 gpt-image-1 修改图像。</CardDescription>
                 </div>
                 <ModeToggle currentMode={currentMode} onModeChange={onModeChange} />
             </CardHeader>
             <form onSubmit={handleSubmit} className='flex h-full flex-1 flex-col overflow-hidden'>
                 <CardContent className='flex-1 space-y-5 overflow-y-auto p-4'>
                     <div className='space-y-1.5'>
-                        <Label htmlFor='edit-prompt' className='text-white'>
-                            Prompt
+                        <Label htmlFor='edit-prompt' className='text-card-foreground'>
+                            提示词
                         </Label>
                         <Textarea
                             id='edit-prompt'
-                            placeholder='e.g., Add a party hat to the main subject'
+                            placeholder='例如：给主体添加一个派对帽'
                             value={editPrompt}
                             onChange={(e) => setEditPrompt(e.target.value)}
                             required
                             disabled={isLoading}
-                            className='min-h-[80px] rounded-md border border-white/20 bg-black text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/50'
+                            className='min-h-[80px] rounded-md border border-border bg-card text-card-foreground placeholder:text-card-foreground/40 focus:border-card-foreground focus:ring-card-foreground'
                         />
                     </div>
 
                     <div className='space-y-2'>
-                        <Label className='text-white'>Source Image(s) [Max: 10]</Label>
+                        <Label className='text-card-foreground'>源图像 [最多: 10]</Label>
                         <Label
                             htmlFor='image-files-input'
-                            className='flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-white/20 bg-black px-3 py-2 text-sm transition-colors hover:bg-white/5'>
-                            <span className='truncate pr-2 text-white/60'>{displayFileNames(imageFiles)}</span>
-                            <span className='flex shrink-0 items-center gap-1.5 rounded-md bg-white/10 px-3 py-1 text-xs font-medium text-white/80 hover:bg-white/20'>
-                                <Upload className='h-3 w-3' /> Browse...
+                            className='flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-card/5'>
+                            <span className='truncate pr-2 text-card-foreground/60'>{displayFileNames(imageFiles)}</span>
+                            <span className='flex shrink-0 items-center gap-1.5 rounded-md bg-card/10 px-3 py-1 text-xs font-medium text-card-foreground/80 hover:bg-card/20'>
+                                <Upload className='h-3 w-3' /> 浏览...
                             </span>
                         </Label>
                         <Input
@@ -516,14 +516,14 @@ export function EditingForm({
                                             alt={`Source preview ${index + 1}`}
                                             width={80}
                                             height={80}
-                                            className='rounded border border-white/10 object-cover'
+                                            className='rounded border border-border object-cover'
                                             unoptimized
                                         />
                                         <Button
                                             type='button'
                                             variant='destructive'
                                             size='icon'
-                                            className='absolute top-0 right-0 h-5 w-5 translate-x-1/3 -translate-y-1/3 transform rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700'
+                                            className='absolute top-0 right-0 h-5 w-5 translate-x-1/3 -translate-y-1/3 transform rounded-full bg-destructive p-0.5 text-destructive-foreground hover:bg-destructive/90'
                                             onClick={() => handleRemoveImage(index)}
                                             aria-label={`Remove image ${index + 1}`}>
                                             <X className='h-3 w-3' />
@@ -535,33 +535,32 @@ export function EditingForm({
                     </div>
 
                     <div className='space-y-3'>
-                        <Label className='block text-white'>Mask</Label>
+                        <Label className='block text-card-foreground'>Mask</Label>
                         <Button
                             type='button'
                             variant='outline'
                             size='sm'
                             onClick={() => setEditShowMaskEditor(!editShowMaskEditor)}
                             disabled={isLoading || !editOriginalImageSize}
-                            className='w-full justify-start border-white/20 px-3 text-white/80 hover:bg-white/10 hover:text-white'>
+                            className='w-full justify-start border-border px-3 text-card-foreground/80 hover:bg-card/10 hover:text-card-foreground'>
                             {editShowMaskEditor
-                                ? 'Close Mask Editor'
+                                ? '关闭蒙版编辑'
                                 : editGeneratedMaskFile
-                                  ? 'Edit Saved Mask'
-                                  : 'Create Mask'}
+                                  ? '编辑保存的蒙版'
+                                  : '创建蒙版'}
                             {editIsMaskSaved && !editShowMaskEditor && (
-                                <span className='ml-auto text-xs text-green-400'>(Saved)</span>
+                                <span className='ml-auto text-xs text-card-foreground/40'>(Saved)</span>
                             )}
                             <ScanEye className='mt-0.5' />
                         </Button>
 
                         {editShowMaskEditor && firstImagePreviewUrl && editOriginalImageSize && (
-                            <div className='space-y-3 rounded-md border border-white/20 bg-black p-3'>
-                                <p className='text-xs text-white/60'>
-                                    Draw on the image below to mark areas for editing (drawn areas become transparent in
-                                    the mask).
+                            <div className='space-y-3 rounded-md border border-border bg-card p-3'>
+                                <p className='text-xs text-card-foreground/60'>
+                                    在下方图像上绘制以标记要编辑的区域（绘制的区域在蒙版中变为透明）。
                                 </p>
                                 <div
-                                    className='relative mx-auto w-full overflow-hidden rounded border border-white/10'
+                                    className='relative mx-auto w-full overflow-hidden rounded border border-border'
                                     style={{
                                         maxWidth: `min(100%, ${editOriginalImageSize.width}px)`,
                                         aspectRatio: `${editOriginalImageSize.width} / ${editOriginalImageSize.height}`
@@ -590,7 +589,7 @@ export function EditingForm({
                                 </div>
                                 <div className='grid grid-cols-1 gap-4 pt-2'>
                                     <div className='space-y-2'>
-                                        <Label htmlFor='brush-size-slider' className='text-sm text-white'>
+                                        <Label htmlFor='brush-size-slider' className='text-sm text-card-foreground'>
                                             Brush Size: {editBrushSize[0]}px
                                         </Label>
                                         <Slider
@@ -601,7 +600,7 @@ export function EditingForm({
                                             value={editBrushSize}
                                             onValueChange={setEditBrushSize}
                                             disabled={isLoading}
-                                            className='mt-1 [&>button]:border-black [&>button]:bg-white [&>button]:ring-offset-black [&>span:first-child]:h-1 [&>span:first-child>span]:bg-white'
+                                            className='mt-1 [&>button]:border-background [&>button]:bg-primary [&>button]:ring-offset-background [&>span:first-child]:h-1 [&>span:first-child>span]:bg-primary'
                                         />
                                     </div>
                                 </div>
@@ -612,8 +611,8 @@ export function EditingForm({
                                         size='sm'
                                         onClick={() => maskInputRef.current?.click()}
                                         disabled={isLoading || !editOriginalImageSize}
-                                        className='mr-auto border-white/20 text-white/80 hover:bg-white/10 hover:text-white'>
-                                        <UploadCloud className='mr-1.5 h-4 w-4' /> Upload Mask
+                                        className='mr-auto border-border text-card-foreground/80 hover:bg-card/10 hover:text-card-foreground'>
+                                        <UploadCloud className='mr-1.5 h-4 w-4' /> 上传蒙版
                                     </Button>
                                     <Input
                                         ref={maskInputRef}
@@ -630,8 +629,8 @@ export function EditingForm({
                                             size='sm'
                                             onClick={handleClearMask}
                                             disabled={isLoading}
-                                            className='border-white/20 text-white/80 hover:bg-white/10 hover:text-white'>
-                                            <Eraser className='mr-1.5 h-4 w-4' /> Clear
+                                            className='border-border text-card-foreground/80 hover:bg-card/10 hover:text-card-foreground'>
+                                            <Eraser className='mr-1.5 h-4 w-4' /> 清除
                                         </Button>
                                         <Button
                                             type='button'
@@ -639,17 +638,17 @@ export function EditingForm({
                                             size='sm'
                                             onClick={generateAndSaveMask}
                                             disabled={isLoading || editDrawnPoints.length === 0}
-                                            className='bg-white text-black hover:bg-white/90 disabled:opacity-50'>
-                                            <Save className='mr-1.5 h-4 w-4' /> Save Mask
+                                            className='bg-card text-card-foreground hover:bg-card/90 disabled:opacity-50'>
+                                            <Save className='mr-1.5 h-4 w-4' /> 保存蒙版
                                         </Button>
                                     </div>
                                 </div>
                                 {editMaskPreviewUrl && (
-                                    <div className='mt-3 border-t border-white/10 pt-3 text-center'>
-                                        <Label className='mb-1.5 block text-sm text-white'>
-                                            Generated Mask Preview:
+                                    <div className='mt-3 border-t border-border pt-3 text-center'>
+                                        <Label className='mb-1.5 block text-sm text-card-foreground'>
+                                            生成的蒙版预览:
                                         </Label>
-                                        <div className='inline-block rounded border border-gray-300 bg-white p-1'>
+                                        <div className='inline-block rounded border border-border bg-card p-1'>
                                             <Image
                                                 src={editMaskPreviewUrl}
                                                 alt='Generated mask preview'
@@ -663,61 +662,61 @@ export function EditingForm({
                                     </div>
                                 )}
                                 {editIsMaskSaved && !editMaskPreviewUrl && (
-                                    <p className='pt-1 text-center text-xs text-yellow-400'>
-                                        Generating mask preview...
+                                    <p className='pt-1 text-center text-xs text-card-foreground/40'>
+                                        生成蒙版预览中...
                                     </p>
                                 )}
                                 {editIsMaskSaved && editMaskPreviewUrl && (
-                                    <p className='pt-1 text-center text-xs text-green-400'>Mask saved successfully!</p>
+                                    <p className='pt-1 text-center text-xs text-card-foreground/40'>蒙版保存成功！</p>
                                 )}
                             </div>
                         )}
                         {!editShowMaskEditor && editGeneratedMaskFile && (
-                            <p className='pt-1 text-xs text-green-400'>Mask applied: {editGeneratedMaskFile.name}</p>
+                            <p className='pt-1 text-xs text-card-foreground/40'>已应用蒙版: {editGeneratedMaskFile.name}</p>
                         )}
                     </div>
 
                     <div className='space-y-3'>
-                        <Label className='block text-white'>Size</Label>
+                        <Label className='block text-card-foreground'>尺寸</Label>
                         <RadioGroup
                             value={editSize}
                             onValueChange={(value) => setEditSize(value as EditingFormData['size'])}
                             disabled={isLoading}
                             className='flex flex-wrap gap-x-5 gap-y-3'>
-                            <RadioItemWithIcon value='auto' id='edit-size-auto' label='Auto' Icon={Sparkles} />
-                            <RadioItemWithIcon value='1024x1024' id='edit-size-square' label='Square' Icon={Square} />
+                            <RadioItemWithIcon value='auto' id='edit-size-auto' label='自动' Icon={Sparkles} />
+                            <RadioItemWithIcon value='1024x1024' id='edit-size-square' label='正方形' Icon={Square} />
                             <RadioItemWithIcon
                                 value='1536x1024'
                                 id='edit-size-landscape'
-                                label='Landscape'
+                                label='横向'
                                 Icon={RectangleHorizontal}
                             />
                             <RadioItemWithIcon
                                 value='1024x1536'
                                 id='edit-size-portrait'
-                                label='Portrait'
+                                label='纵向'
                                 Icon={RectangleVertical}
                             />
                         </RadioGroup>
                     </div>
 
                     <div className='space-y-3'>
-                        <Label className='block text-white'>Quality</Label>
+                        <Label className='block text-card-foreground'>质量</Label>
                         <RadioGroup
                             value={editQuality}
                             onValueChange={(value) => setEditQuality(value as EditingFormData['quality'])}
                             disabled={isLoading}
                             className='flex flex-wrap gap-x-5 gap-y-3'>
-                            <RadioItemWithIcon value='auto' id='edit-quality-auto' label='Auto' Icon={Sparkles} />
-                            <RadioItemWithIcon value='low' id='edit-quality-low' label='Low' Icon={Tally1} />
-                            <RadioItemWithIcon value='medium' id='edit-quality-medium' label='Medium' Icon={Tally2} />
-                            <RadioItemWithIcon value='high' id='edit-quality-high' label='High' Icon={Tally3} />
+                            <RadioItemWithIcon value='auto' id='edit-quality-auto' label='自动' Icon={Sparkles} />
+                            <RadioItemWithIcon value='low' id='edit-quality-low' label='低' Icon={Tally1} />
+                            <RadioItemWithIcon value='medium' id='edit-quality-medium' label='中' Icon={Tally2} />
+                            <RadioItemWithIcon value='high' id='edit-quality-high' label='高' Icon={Tally3} />
                         </RadioGroup>
                     </div>
 
                     <div className='space-y-2'>
-                        <Label htmlFor='edit-n-slider' className='text-white'>
-                            Number of Images: {editN[0]}
+                        <Label htmlFor='edit-n-slider' className='text-card-foreground'>
+                            图像数量: {editN[0]}
                         </Label>
                         <Slider
                             id='edit-n-slider'
@@ -727,17 +726,17 @@ export function EditingForm({
                             value={editN}
                             onValueChange={setEditN}
                             disabled={isLoading}
-                            className='mt-3 [&>button]:border-black [&>button]:bg-white [&>button]:ring-offset-black [&>span:first-child]:h-1 [&>span:first-child>span]:bg-white'
+                            className='mt-3 [&>button]:border-background [&>button]:bg-primary [&>button]:ring-offset-background [&>span:first-child]:h-1 [&>span:first-child>span]:bg-primary'
                         />
                     </div>
                 </CardContent>
-                <CardFooter className='border-t border-white/10 p-4'>
+                <CardFooter className='border-t border-border p-4'>
                     <Button
                         type='submit'
                         disabled={isLoading || !editPrompt || imageFiles.length === 0}
-                        className='flex w-full items-center justify-center gap-2 rounded-md bg-white text-black hover:bg-white/90 disabled:bg-white/10 disabled:text-white/40'>
+                        className='flex w-full items-center justify-center gap-2 rounded-md bg-card text-card-foreground hover:bg-card/90 disabled:bg-card/10 disabled:text-card-foreground/40'>
                         {isLoading && <Loader2 className='h-4 w-4 animate-spin' />}
-                        {isLoading ? 'Editing...' : 'Edit Image'}
+                        {isLoading ? '编辑中...' : '编辑图像'}
                     </Button>
                 </CardFooter>
             </form>

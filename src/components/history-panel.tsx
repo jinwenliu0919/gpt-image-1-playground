@@ -99,45 +99,45 @@ export function HistoryPanel({
     };
 
     return (
-        <Card className='flex h-full w-full flex-col overflow-hidden rounded-lg border border-white/10 bg-black'>
-            <CardHeader className='flex flex-row items-center justify-between gap-4 border-b border-white/10 px-4 py-3'>
+        <Card className='flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card'>
+            <CardHeader className='flex flex-row items-center justify-between gap-4 border-b border-border px-4 py-3'>
                 <div className='flex items-center gap-2'>
-                    <CardTitle className='text-lg font-medium text-white'>History</CardTitle>
+                    <CardTitle className='text-lg font-medium text-card-foreground'>历史记录</CardTitle>
                     {totalCost > 0 && (
                         <Dialog open={isTotalCostDialogOpen} onOpenChange={setIsTotalCostDialogOpen}>
                             <DialogTrigger asChild>
                                 <button
-                                    className='mt-0.5 flex items-center gap-1 rounded-full bg-green-600/80 px-1.5 py-0.5 text-[12px] text-white transition-colors hover:bg-green-500/90'
-                                    aria-label='Show total cost summary'>
-                                    Total Cost: ${totalCost.toFixed(4)}
+                                    className='mt-0.5 flex items-center gap-1 rounded-full bg-green-600/80 px-1.5 py-0.5 text-[12px] text-primary-foreground transition-colors hover:bg-green-500/90'
+                                    aria-label='显示总成本摘要'>
+                                    总成本: ${totalCost.toFixed(4)}
                                 </button>
                             </DialogTrigger>
-                            <DialogContent className='border-neutral-700 bg-neutral-900 text-white sm:max-w-[450px]'>
+                            <DialogContent className='border-border bg-card text-card-foreground sm:max-w-[450px]'>
                                 <DialogHeader>
-                                    <DialogTitle className='text-white'>Total Cost Summary</DialogTitle>
+                                    <DialogTitle className='text-card-foreground'>总成本摘要</DialogTitle>
                                     {/* Add sr-only description for accessibility */}
                                     <DialogDescription className='sr-only'>
-                                        A summary of the total estimated cost for all generated images in the history.
+                                        历史记录中所有生成图像的总估计成本摘要。
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className='space-y-1 pt-1 text-xs text-neutral-400'>
-                                    <p>Pricing for gpt-image-1:</p>
+                                <div className='space-y-1 pt-1 text-xs text-card-foreground'>
+                                    <p>gpt-image-1 的定价:</p>
                                     <ul className='list-disc pl-4'>
-                                        <li>Text Input: $5 / 1M tokens</li>
-                                        <li>Image Input: $10 / 1M tokens</li>
-                                        <li>Image Output: $40 / 1M tokens</li>
+                                        <li>文本输入: $5 / 1M tokens</li>
+                                        <li>图像输入: $10 / 1M tokens</li>
+                                        <li>图像输出: $40 / 1M tokens</li>
                                     </ul>
                                 </div>
-                                <div className='space-y-2 py-4 text-sm text-neutral-300'>
+                                <div className='space-y-2 py-4 text-sm text-card-foreground'>
                                     <div className='flex justify-between'>
-                                        <span>Total Images Generated:</span> <span>{totalImages.toLocaleString()}</span>
+                                        <span>已生成图像总数:</span> <span>{totalImages.toLocaleString()}</span>
                                     </div>
                                     <div className='flex justify-between'>
-                                        <span>Average Cost Per Image:</span> <span>${averageCost.toFixed(4)}</span>
+                                        <span>每张图像平均成本:</span> <span>${averageCost.toFixed(4)}</span>
                                     </div>
-                                    <hr className='my-2 border-neutral-700' />
-                                    <div className='flex justify-between font-medium text-white'>
-                                        <span>Total Estimated Cost:</span>
+                                    <hr className='my-2 border-border' />
+                                    <div className='flex justify-between font-medium text-card-foreground'>
+                                        <span>总估计成本:</span>
                                         <span>${totalCost.toFixed(4)}</span>
                                     </div>
                                 </div>
@@ -147,8 +147,8 @@ export function HistoryPanel({
                                             type='button'
                                             variant='secondary'
                                             size='sm'
-                                            className='bg-neutral-700 text-neutral-200 hover:bg-neutral-600'>
-                                            Close
+                                            className='bg-border text-card-foreground hover:bg-border'>
+                                            关闭
                                         </Button>
                                     </DialogClose>
                                 </DialogFooter>
@@ -161,15 +161,15 @@ export function HistoryPanel({
                         variant='ghost'
                         size='sm'
                         onClick={onClearHistory}
-                        className='h-auto rounded-md px-2 py-1 text-white/60 hover:bg-white/10 hover:text-white'>
-                        Clear
+                        className='h-auto rounded-md px-2 py-1 text-card-foreground/60 hover:bg-card/10 hover:text-card-foreground'>
+                        清空
                     </Button>
                 )}
             </CardHeader>
             <CardContent className='flex-grow overflow-y-auto p-4'>
                 {history.length === 0 ? (
-                    <div className='flex h-full items-center justify-center text-white/40'>
-                        <p>Generated images will appear here.</p>
+                    <div className='flex h-full items-center justify-center text-card-foreground/40'>
+                        <p>生成的图像将显示在这里。</p>
                     </div>
                 ) : (
                     <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'>
@@ -195,7 +195,7 @@ export function HistoryPanel({
                                     <div className='group relative'>
                                         <button
                                             onClick={() => onSelectImage(item)}
-                                            className='relative block aspect-square w-full overflow-hidden rounded-t-md border border-white/20 transition-all duration-150 group-hover:border-white/40 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black focus:outline-none'
+                                            className='relative block aspect-square w-full overflow-hidden rounded-t-md border border-border transition-all duration-150 group-hover:border-border focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-black focus:outline-none'
                                             aria-label={`View image batch from ${new Date(item.timestamp).toLocaleString()}`}>
                                             {thumbnailUrl ? (
                                                 <Image
@@ -207,13 +207,13 @@ export function HistoryPanel({
                                                     unoptimized
                                                 />
                                             ) : (
-                                                <div className='flex h-full w-full items-center justify-center bg-neutral-800 text-neutral-500'>
+                                                <div className='flex h-full w-full items-center justify-center bg-card/10 text-card-foreground'>
                                                     ?
                                                 </div>
                                             )}
                                             <div
                                                 className={cn(
-                                                    'pointer-events-none absolute top-1 left-1 z-10 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-white',
+                                                    'pointer-events-none absolute top-1 left-1 z-10 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-card-foreground',
                                                     item.mode === 'edit' ? 'bg-orange-600/80' : 'bg-blue-600/80'
                                                 )}>
                                                 {item.mode === 'edit' ? (
@@ -221,26 +221,26 @@ export function HistoryPanel({
                                                 ) : (
                                                     <SparklesIcon size={12} />
                                                 )}
-                                                {item.mode === 'edit' ? 'Edit' : 'Create'}
+                                                {item.mode === 'edit' ? '编辑' : '创建'}
                                             </div>
                                             {isMultiImage && (
-                                                <div className='pointer-events-none absolute right-1 bottom-1 z-10 flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[12px] text-white'>
+                                                <div className='pointer-events-none absolute right-1 bottom-1 z-10 flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[12px] text-card-foreground'>
                                                     <Layers size={16} />
                                                     {imageCount}
                                                 </div>
                                             )}
                                             <div className='pointer-events-none absolute bottom-1 left-1 z-10 flex items-center gap-1'>
-                                                <div className='flex items-center gap-1 rounded-full border border-white/10 bg-neutral-900/80 px-1 py-0.5 text-[11px] text-white/70'>
+                                                <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[11px] text-card-foreground/70'>
                                                     {originalStorageMode === 'fs' ? (
-                                                        <HardDrive size={12} className='text-neutral-400' />
+                                                        <HardDrive size={12} className='text-card-foreground/40' />
                                                     ) : (
                                                         <Database size={12} className='text-blue-400' />
                                                     )}
                                                     <span>{originalStorageMode === 'fs' ? 'file' : 'db'}</span>
                                                 </div>
                                                 {item.output_format && (
-                                                    <div className='flex items-center gap-1 rounded-full border border-white/10 bg-neutral-900/80 px-1 py-0.5 text-[11px] text-white/70'>
-                                                        <FileImage size={12} className='text-neutral-400' />
+                                                    <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[11px] text-card-foreground/70'>
+                                                        <FileImage size={12} className='text-card-foreground/40' />
                                                         <span>{outputFormat.toUpperCase()}</span>
                                                     </div>
                                                 )}
@@ -256,20 +256,20 @@ export function HistoryPanel({
                                                             e.stopPropagation();
                                                             setOpenCostDialogTimestamp(itemKey);
                                                         }}
-                                                        className='absolute top-1 right-1 z-20 flex items-center gap-0.5 rounded-full bg-green-600/80 px-1.5 py-0.5 text-[11px] text-white transition-colors hover:bg-green-500/90'
+                                                        className='absolute top-1 right-1 z-20 flex items-center gap-0.5 rounded-full bg-green-600/80 px-1.5 py-0.5 text-[11px] text-card-foreground transition-colors hover:bg-green-500/90'
                                                         aria-label='Show cost breakdown'>
                                                         <DollarSign size={12} />
                                                         {item.costDetails.estimated_cost_usd.toFixed(4)}
                                                     </button>
                                                 </DialogTrigger>
-                                                <DialogContent className='border-neutral-700 bg-neutral-900 text-white sm:max-w-[450px]'>
+                                                <DialogContent className='border-border bg-card text-card-foreground sm:max-w-[450px]'>
                                                     <DialogHeader>
-                                                        <DialogTitle className='text-white'>Cost Breakdown</DialogTitle>
+                                                        <DialogTitle className='text-card-foreground'>Cost Breakdown</DialogTitle>
                                                         <DialogDescription className='sr-only'>
                                                             Estimated cost breakdown for this image generation.
                                                         </DialogDescription>
                                                     </DialogHeader>
-                                                    <div className='space-y-1 pt-1 text-xs text-neutral-400'>
+                                                    <div className='space-y-1 pt-1 text-xs text-card-foreground'>
                                                         <p>Pricing for gpt-image-1:</p>
                                                         <ul className='list-disc pl-4'>
                                                             <li>Text Input: $5 / 1M tokens</li>
@@ -277,7 +277,7 @@ export function HistoryPanel({
                                                             <li>Image Output: $40 / 1M tokens</li>
                                                         </ul>
                                                     </div>
-                                                    <div className='space-y-2 py-4 text-sm text-neutral-300'>
+                                                    <div className='space-y-2 py-4 text-sm text-card-foreground'>
                                                         <div className='flex justify-between'>
                                                             <span>Text Input Tokens:</span>{' '}
                                                             <span>
@@ -316,8 +316,8 @@ export function HistoryPanel({
                                                                 )
                                                             </span>
                                                         </div>
-                                                        <hr className='my-2 border-neutral-700' />
-                                                        <div className='flex justify-between font-medium text-white'>
+                                                        <hr className='my-2 border-border' />
+                                                        <div className='flex justify-between font-medium text-card-foreground'>
                                                             <span>Total Estimated Cost:</span>
                                                             <span>
                                                                 ${item.costDetails.estimated_cost_usd.toFixed(4)}
@@ -330,7 +330,7 @@ export function HistoryPanel({
                                                                 type='button'
                                                                 variant='secondary'
                                                                 size='sm'
-                                                                className='bg-neutral-700 text-neutral-200 hover:bg-neutral-600'>
+                                                                className='bg-border text-card-foreground hover:bg-border'>
                                                                 Close
                                                             </Button>
                                                         </DialogClose>
@@ -340,19 +340,19 @@ export function HistoryPanel({
                                         )}
                                     </div>
 
-                                    <div className='space-y-1 rounded-b-md border border-t-0 border-neutral-700 bg-black p-2 text-xs text-white/60'>
+                                    <div className='space-y-1 rounded-b-md border border-t-0 border-border bg-card p-2 text-xs text-card-foreground/60'>
                                         <p title={`Generated on: ${new Date(item.timestamp).toLocaleString()}`}>
-                                            <span className='font-medium text-white/80'>Time:</span>{' '}
+                                            <span className='font-medium text-card-foreground/80'>时间:</span>{' '}
                                             {formatDuration(item.durationMs)}
                                         </p>
                                         <p>
-                                            <span className='font-medium text-white/80'>Quality:</span> {item.quality}
+                                            <span className='font-medium text-card-foreground/80'>质量:</span> {item.quality}
                                         </p>
                                         <p>
-                                            <span className='font-medium text-white/80'>BG:</span> {item.background}
+                                            <span className='font-medium text-card-foreground/80'>背景:</span> {item.background}
                                         </p>
                                         <p>
-                                            <span className='font-medium text-white/80'>Mod:</span> {item.moderation}
+                                            <span className='font-medium text-card-foreground/80'>审核:</span> {item.moderation}
                                         </p>
                                         <div className='mt-2 flex items-center gap-1'>
                                             <Dialog
@@ -364,41 +364,41 @@ export function HistoryPanel({
                                                     <Button
                                                         variant='outline'
                                                         size='sm'
-                                                        className='h-6 flex-grow border-white/20 px-2 py-1 text-xs text-white/70 hover:bg-white/10 hover:text-white'
+                                                        className='h-6 flex-grow border-border px-2 py-1 text-xs text-card-foreground/70 hover:bg-card/10 hover:text-card-foreground'
                                                         onClick={() => setOpenPromptDialogTimestamp(itemKey)}>
-                                                        Show Prompt
+                                                        显示提示词
                                                     </Button>
                                                 </DialogTrigger>
-                                                <DialogContent className='border-neutral-700 bg-neutral-900 text-white sm:max-w-[625px]'>
+                                                <DialogContent className='border-border bg-card text-card-foreground sm:max-w-[625px]'>
                                                     <DialogHeader>
-                                                        <DialogTitle className='text-white'>Prompt</DialogTitle>
+                                                        <DialogTitle className='text-card-foreground'>提示词</DialogTitle>
                                                         <DialogDescription className='sr-only'>
-                                                            The full prompt used to generate this image batch.
+                                                            用于生成此批次图像的完整提示词。
                                                         </DialogDescription>
                                                     </DialogHeader>
-                                                    <div className='max-h-[400px] overflow-y-auto rounded-md border border-neutral-600 bg-neutral-800 p-3 py-4 text-sm text-neutral-300'>
-                                                        {item.prompt || 'No prompt recorded.'}
+                                                    <div className='max-h-[400px] overflow-y-auto rounded-md border border-border bg-card p-3 py-4 text-sm text-card-foreground'>
+                                                        {item.prompt || '未记录提示词。'}
                                                     </div>
                                                     <DialogFooter>
                                                         <Button
                                                             variant='outline'
                                                             size='sm'
                                                             onClick={() => handleCopy(item.prompt, itemKey)}
-                                                            className='border-neutral-600 text-neutral-300 hover:bg-neutral-700 hover:text-white'>
+                                                            className='border-border text-card-foreground hover:bg-card/10 hover:text-card-foreground'>
                                                             {copiedTimestamp === itemKey ? (
                                                                 <Check className='mr-2 h-4 w-4 text-green-400' />
                                                             ) : (
                                                                 <Copy className='mr-2 h-4 w-4' />
                                                             )}
-                                                            {copiedTimestamp === itemKey ? 'Copied!' : 'Copy'}
+                                                            {copiedTimestamp === itemKey ? '已复制!' : '复制'}
                                                         </Button>
                                                         <DialogClose asChild>
                                                             <Button
                                                                 type='button'
                                                                 variant='secondary'
                                                                 size='sm'
-                                                                className='bg-neutral-700 text-neutral-200 hover:bg-neutral-600'>
-                                                                Close
+                                                                className='bg-border text-card-foreground hover:bg-border'>
+                                                                关闭
                                                             </Button>
                                                         </DialogClose>
                                                     </DialogFooter>
@@ -411,7 +411,7 @@ export function HistoryPanel({
                                                 }}>
                                                 <DialogTrigger asChild>
                                                     <Button
-                                                        className='h-6 w-6 bg-red-700/60 text-white hover:bg-red-600/60'
+                                                        className='h-6 w-6 bg-red-700/60 text-card-foreground hover:bg-red-600/60'
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             onDeleteItemRequest(item);
@@ -420,15 +420,13 @@ export function HistoryPanel({
                                                         <Trash2 size={14} />
                                                     </Button>
                                                 </DialogTrigger>
-                                                <DialogContent className='border-neutral-700 bg-neutral-900 text-white sm:max-w-md'>
+                                                <DialogContent className='border-border bg-card text-card-foreground sm:max-w-md'>
                                                     <DialogHeader>
-                                                        <DialogTitle className='text-white'>
-                                                            Confirm Deletion
+                                                        <DialogTitle className='text-card-foreground'>
+                                                            确认删除
                                                         </DialogTitle>
-                                                        <DialogDescription className='pt-2 text-neutral-300'>
-                                                            Are you sure you want to delete this history entry? This
-                                                            will remove {item.images.length} image(s). This action
-                                                            cannot be undone.
+                                                        <DialogDescription className='pt-2 text-card-foreground'>
+                                                            您确定要删除此历史记录条目吗？这将删除 {item.images.length} 张图像。此操作无法撤消。
                                                         </DialogDescription>
                                                     </DialogHeader>
                                                     <div className='flex items-center space-x-2 py-2'>
@@ -438,12 +436,12 @@ export function HistoryPanel({
                                                             onCheckedChange={(checked) =>
                                                                 onDeletePreferenceDialogChange(!!checked)
                                                             }
-                                                            className='border-neutral-400 bg-white data-[state=checked]:border-neutral-700 data-[state=checked]:bg-white data-[state=checked]:text-black dark:border-neutral-500 dark:!bg-white'
+                                                            className='border-border bg-card data-[state=checked]:border-card data-[state=checked]:bg-card data-[state=checked]:text-card dark:border-border dark:!bg-card'
                                                         />
                                                         <label
                                                             htmlFor={`dont-ask-${item.timestamp}`}
-                                                            className='text-sm leading-none font-medium text-neutral-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-                                                            Don&apos;t ask me again
+                                                            className='text-sm leading-none font-medium text-card-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+                                                            不再询问
                                                         </label>
                                                     </div>
                                                     <DialogFooter className='gap-2 sm:justify-end'>
@@ -452,16 +450,16 @@ export function HistoryPanel({
                                                             variant='outline'
                                                             size='sm'
                                                             onClick={onCancelDeletion}
-                                                            className='border-neutral-600 text-neutral-300 hover:bg-neutral-700 hover:text-white'>
-                                                            Cancel
+                                                            className='border-border text-card-foreground hover:bg-card hover:text-card-foreground'>
+                                                            取消
                                                         </Button>
                                                         <Button
                                                             type='button'
                                                             variant='destructive'
                                                             size='sm'
                                                             onClick={onConfirmDeletion}
-                                                            className='bg-red-600 text-white hover:bg-red-500'>
-                                                            Delete
+                                                            className='bg-red-600 text-card-foreground hover:bg-red-500'>
+                                                            删除
                                                         </Button>
                                                     </DialogFooter>
                                                 </DialogContent>

@@ -2,43 +2,17 @@
 
 import { EditingForm, type EditingFormData } from '@/components/editing-form';
 import { GenerationForm, type GenerationFormData } from '@/components/generation-form';
-import { HistoryPanel } from '@/components/history-panel';
 import { ImageOutput } from '@/components/image-output';
 import { PasswordDialog } from '@/components/password-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { calculateApiCost, type CostDetails } from '@/lib/cost-utils';
+import { calculateApiCost } from '@/lib/cost-utils';
 import { db, type ImageRecord } from '@/lib/db';
-import { useLiveQuery } from 'dexie-react-hooks';
 import * as React from 'react';
-
-type HistoryImage = {
-    filename: string;
-};
-
-export type HistoryMetadata = {
-    timestamp: number;
-    images: HistoryImage[];
-    storageModeUsed?: 'fs' | 'indexeddb';
-    durationMs: number;
-    quality: GenerationFormData['quality'];
-    background: GenerationFormData['background'];
-    moderation: GenerationFormData['moderation'];
-    prompt: string;
-    mode: 'generate' | 'edit';
-    costDetails: CostDetails | null;
-    output_format?: GenerationFormData['output_format'];
-};
-
-type DrawnPoint = {
-    x: number;
-    y: number;
-    size: number;
-};
-
-const MAX_EDIT_IMAGES = 10;
+import { useHistory } from '@/contexts/HistoryContext';
+import type { HistoryMetadata } from '@/lib/types';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const explicitModeClient = process.env.NEXT_PUBLIC_IMAGE_STORAGE_MODE;
-
 const vercelEnvClient = process.env.NEXT_PUBLIC_VERCEL_ENV;
 const isOnVercelClient = vercelEnvClient === 'production' || vercelEnvClient === 'preview';
 
@@ -64,24 +38,33 @@ type ApiImageResponseItem = {
     path?: string;
 };
 
+type DrawnPoint = {
+    x: number;
+    y: number;
+    size: number;
+};
+
+const MAX_EDIT_IMAGES = 10;
+
 export default function HomePage() {
     const [mode, setMode] = React.useState<'generate' | 'edit'>('generate');
-    const [isPasswordRequiredByBackend, setIsPasswordRequiredByBackend] = React.useState<boolean | null>(null);
-    const [clientPasswordHash, setClientPasswordHash] = React.useState<string | null>(null);
     const [isLoading, setIsLoading] = React.useState(false);
     const [isSendingToEdit, setIsSendingToEdit] = React.useState(false);
-    const [error, setError] = React.useState<string | null>(null);
-    const [latestImageBatch, setLatestImageBatch] = React.useState<{ path: string; filename: string }[] | null>(null);
+    
+    const { 
+        error, 
+        setError, 
+        latestImageBatch, 
+        setLatestImageBatch, 
+        addHistoryEntry,
+        isPasswordRequiredByBackend,
+        clientPasswordHash
+    } = useHistory();
+
     const [imageOutputView, setImageOutputView] = React.useState<'grid' | number>('grid');
-    const [history, setHistory] = React.useState<HistoryMetadata[]>([]);
-    const [isInitialLoad, setIsInitialLoad] = React.useState(true);
-    const [blobUrlCache, setBlobUrlCache] = React.useState<Record<string, string>>({});
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
     const [passwordDialogContext, setPasswordDialogContext] = React.useState<'initial' | 'retry'>('initial');
     const [lastApiCallArgs, setLastApiCallArgs] = React.useState<[GenerationFormData | EditingFormData] | null>(null);
-    const [skipDeleteConfirmation, setSkipDeleteConfirmation] = React.useState<boolean>(false);
-    const [itemToDeleteConfirm, setItemToDeleteConfirm] = React.useState<HistoryMetadata | null>(null);
-    const [dialogCheckboxStateSkipConfirm, setDialogCheckboxStateSkipConfirm] = React.useState<boolean>(false);
 
     const allDbImages = useLiveQuery<ImageRecord[] | undefined>(() => db.images.toArray(), []);
 
@@ -110,110 +93,11 @@ export default function HomePage() {
     const [genBackground, setGenBackground] = React.useState<GenerationFormData['background']>('auto');
     const [genModeration, setGenModeration] = React.useState<GenerationFormData['moderation']>('auto');
 
-    const getImageSrc = React.useCallback(
-        (filename: string): string | undefined => {
-            if (blobUrlCache[filename]) {
-                return blobUrlCache[filename];
-            }
-
-            const record = allDbImages?.find((img) => img.filename === filename);
-            if (record?.blob) {
-                const url = URL.createObjectURL(record.blob);
-
-                return url;
-            }
-
-            return undefined;
-        },
-        [allDbImages, blobUrlCache]
-    );
-
-    React.useEffect(() => {
-        return () => {
-            console.log('Revoking blob URLs:', Object.keys(blobUrlCache).length);
-            Object.values(blobUrlCache).forEach((url) => {
-                if (url.startsWith('blob:')) {
-                    URL.revokeObjectURL(url);
-                }
-            });
-        };
-    }, [blobUrlCache]);
-
     React.useEffect(() => {
         return () => {
             editSourceImagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
         };
     }, [editSourceImagePreviewUrls]);
-
-    React.useEffect(() => {
-        try {
-            const storedHistory = localStorage.getItem('openaiImageHistory');
-            if (storedHistory) {
-                const parsedHistory: HistoryMetadata[] = JSON.parse(storedHistory);
-                if (Array.isArray(parsedHistory)) {
-                    setHistory(parsedHistory);
-                } else {
-                    console.warn('Invalid history data found in localStorage.');
-                    localStorage.removeItem('openaiImageHistory');
-                }
-            }
-        } catch (e) {
-            console.error('Failed to load or parse history from localStorage:', e);
-            localStorage.removeItem('openaiImageHistory');
-        }
-        setIsInitialLoad(false);
-    }, []);
-
-    React.useEffect(() => {
-        const fetchAuthStatus = async () => {
-            try {
-                const response = await fetch('/api/auth-status');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch auth status');
-                }
-                const data = await response.json();
-                setIsPasswordRequiredByBackend(data.passwordRequired);
-            } catch (error) {
-                console.error('Error fetching auth status:', error);
-                setIsPasswordRequiredByBackend(false);
-            }
-        };
-
-        fetchAuthStatus();
-        const storedHash = localStorage.getItem('clientPasswordHash');
-        if (storedHash) {
-            setClientPasswordHash(storedHash);
-        }
-    }, []);
-
-    React.useEffect(() => {
-        if (!isInitialLoad) {
-            try {
-                localStorage.setItem('openaiImageHistory', JSON.stringify(history));
-            } catch (e) {
-                console.error('Failed to save history to localStorage:', e);
-            }
-        }
-    }, [history, isInitialLoad]);
-
-    React.useEffect(() => {
-        return () => {
-            editSourceImagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
-        };
-    }, [editSourceImagePreviewUrls]);
-
-    React.useEffect(() => {
-        const storedPref = localStorage.getItem('imageGenSkipDeleteConfirm');
-        if (storedPref === 'true') {
-            setSkipDeleteConfirmation(true);
-        } else if (storedPref === 'false') {
-            setSkipDeleteConfirmation(false);
-        }
-    }, []);
-
-    React.useEffect(() => {
-        localStorage.setItem('imageGenSkipDeleteConfirm', String(skipDeleteConfirmation));
-    }, [skipDeleteConfirmation]);
 
     React.useEffect(() => {
         const handlePaste = (event: ClipboardEvent) => {
@@ -275,7 +159,8 @@ export default function HomePage() {
         try {
             const hash = await sha256Client(password);
             localStorage.setItem('clientPasswordHash', hash);
-            setClientPasswordHash(hash);
+            window.location.reload(); 
+            
             setError(null);
             setIsPasswordDialogOpen(false);
             if (passwordDialogContext === 'retry' && lastApiCallArgs) {
@@ -435,8 +320,6 @@ export default function HomePage() {
                                 console.log(`Saved ${img.filename} to IndexedDB with type ${actualMimeType}.`);
 
                                 const blobUrl = URL.createObjectURL(blob);
-                                setBlobUrlCache((prev) => ({ ...prev, [img.filename]: blobUrl }));
-
                                 return { filename: img.filename, path: blobUrl };
                             } catch (dbError) {
                                 console.error(`Error saving blob ${img.filename} to IndexedDB:`, dbError);
@@ -467,7 +350,7 @@ export default function HomePage() {
                 setLatestImageBatch(processedImages);
                 setImageOutputView(processedImages.length > 1 ? 'grid' : 0);
 
-                setHistory((prevHistory) => [newHistoryEntry, ...prevHistory]);
+                addHistoryEntry(newHistoryEntry);
             } else {
                 setLatestImageBatch(null);
                 throw new Error('API response did not contain valid image data or filenames.');
@@ -481,76 +364,6 @@ export default function HomePage() {
         } finally {
             if (durationMs === 0) durationMs = Date.now() - startTime;
             setIsLoading(false);
-        }
-    };
-
-    const handleHistorySelect = (item: HistoryMetadata) => {
-        console.log(
-            `Selecting history item from ${new Date(item.timestamp).toISOString()}, stored via: ${item.storageModeUsed}`
-        );
-        const originalStorageMode = item.storageModeUsed || 'fs';
-
-        const selectedBatchPromises = item.images.map(async (imgInfo) => {
-            let path: string | undefined;
-            if (originalStorageMode === 'indexeddb') {
-                path = getImageSrc(imgInfo.filename);
-            } else {
-                path = `/api/image/${imgInfo.filename}`;
-            }
-
-            if (path) {
-                return { path, filename: imgInfo.filename };
-            } else {
-                console.warn(
-                    `Could not get image source for history item: ${imgInfo.filename} (mode: ${originalStorageMode})`
-                );
-                setError(`Image ${imgInfo.filename} could not be loaded.`);
-                return null;
-            }
-        });
-
-        Promise.all(selectedBatchPromises).then((resolvedBatch) => {
-            const validImages = resolvedBatch.filter(Boolean) as { path: string; filename: string }[];
-
-            if (validImages.length !== item.images.length && !error) {
-                setError(
-                    'Some images from this history entry could not be loaded (they might have been cleared or are missing).'
-                );
-            } else if (validImages.length === item.images.length) {
-                setError(null);
-            }
-
-            setLatestImageBatch(validImages.length > 0 ? validImages : null);
-            setImageOutputView(validImages.length > 1 ? 'grid' : 0);
-        });
-    };
-
-    const handleClearHistory = async () => {
-        const confirmationMessage =
-            effectiveStorageModeClient === 'indexeddb'
-                ? 'Are you sure you want to clear the entire image history? In IndexedDB mode, this will also permanently delete all stored images. This cannot be undone.'
-                : 'Are you sure you want to clear the entire image history? This cannot be undone.';
-
-        if (window.confirm(confirmationMessage)) {
-            setHistory([]);
-            setLatestImageBatch(null);
-            setImageOutputView('grid');
-            setError(null);
-
-            try {
-                localStorage.removeItem('openaiImageHistory');
-                console.log('Cleared history metadata from localStorage.');
-
-                if (effectiveStorageModeClient === 'indexeddb') {
-                    await db.images.clear();
-                    console.log('Cleared images from IndexedDB.');
-
-                    setBlobUrlCache({});
-                }
-            } catch (e) {
-                console.error('Failed during history clearing:', e);
-                setError(`Failed to clear history: ${e instanceof Error ? e.message : String(e)}`);
-            }
         }
     };
 
@@ -626,93 +439,22 @@ export default function HomePage() {
         }
     };
 
-    const executeDeleteItem = async (item: HistoryMetadata) => {
-        if (!item) return;
-        console.log(`Executing delete for history item timestamp: ${item.timestamp}`);
-        setError(null); // Clear previous errors
-
-        const { images: imagesInEntry, storageModeUsed, timestamp } = item;
-        const filenamesToDelete = imagesInEntry.map((img) => img.filename);
-
-        try {
-            if (storageModeUsed === 'indexeddb') {
-                console.log('Deleting from IndexedDB:', filenamesToDelete);
-                await db.images.where('filename').anyOf(filenamesToDelete).delete();
-                setBlobUrlCache((prevCache) => {
-                    const newCache = { ...prevCache };
-                    filenamesToDelete.forEach((fn) => delete newCache[fn]);
-                    return newCache;
-                });
-                console.log('Successfully deleted from IndexedDB and cleared blob cache.');
-            } else if (storageModeUsed === 'fs') {
-                console.log('Requesting deletion from filesystem via API:', filenamesToDelete);
-                const apiPayload: { filenames: string[]; passwordHash?: string } = { filenames: filenamesToDelete };
-                if (isPasswordRequiredByBackend && clientPasswordHash) {
-                    apiPayload.passwordHash = clientPasswordHash;
-                }
-
-                const response = await fetch('/api/image-delete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(apiPayload)
-                });
-
-                const result = await response.json();
-                if (!response.ok) {
-                    console.error('API deletion error:', result);
-                    throw new Error(result.error || `API deletion failed with status ${response.status}`);
-                }
-                console.log('API deletion successful:', result);
-            }
-
-            setHistory((prevHistory) => prevHistory.filter((h) => h.timestamp !== timestamp));
-            if (latestImageBatch && latestImageBatch.some((img) => filenamesToDelete.includes(img.filename))) {
-                setLatestImageBatch(null); // Clear current view if it contained deleted images
-            }
-        } catch (e: unknown) {
-            console.error('Error during item deletion:', e);
-            setError(e instanceof Error ? e.message : 'An unexpected error occurred during deletion.');
-        } finally {
-            setItemToDeleteConfirm(null); // Always close dialog
-        }
-    };
-
-    const handleRequestDeleteItem = (item: HistoryMetadata) => {
-        if (!skipDeleteConfirmation) {
-            setDialogCheckboxStateSkipConfirm(skipDeleteConfirmation);
-            setItemToDeleteConfirm(item);
-        } else {
-            executeDeleteItem(item);
-        }
-    };
-
-    const handleConfirmDeletion = () => {
-        if (itemToDeleteConfirm) {
-            executeDeleteItem(itemToDeleteConfirm);
-            setSkipDeleteConfirmation(dialogCheckboxStateSkipConfirm);
-        }
-    };
-
-    const handleCancelDeletion = () => {
-        setItemToDeleteConfirm(null);
-    };
-
     return (
-        <main className='flex min-h-screen flex-col items-center bg-black p-4 text-white md:p-8 lg:p-12'>
+        <main className='w-full bg-background p-2 text-foreground h-[calc(100vh-80px)]'>
             <PasswordDialog
                 isOpen={isPasswordDialogOpen}
                 onOpenChange={setIsPasswordDialogOpen}
                 onSave={handleSavePassword}
-                title={passwordDialogContext === 'retry' ? 'Password Required' : 'Configure Password'}
+                title={passwordDialogContext === 'retry' ? '需要密码' : '配置密码'}
                 description={
                     passwordDialogContext === 'retry'
-                        ? 'The server requires a password, or the previous one was incorrect. Please enter it to continue.'
-                        : 'Set a password to use for API requests.'
+                        ? '服务器需要密码，或者之前的密码不正确。请输入密码以继续。'
+                        : '设置用于 API 请求的密码。'
                 }
             />
-            <div className='w-full max-w-7xl space-y-6'>
-                <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>
-                    <div className='relative flex h-[70vh] min-h-[600px] flex-col lg:col-span-1'>
+            <div className='w-full space-y-6'>
+                <div className='grid grid-cols-1 gap-2 lg:grid-cols-4'>
+                    <div className='relative flex h-[calc(100vh-80px)] min-h-[600px] flex-col lg:col-span-1'>
                         <div className={mode === 'generate' ? 'block h-full w-full' : 'hidden'}>
                             <GenerationForm
                                 onSubmit={handleApiCall}
@@ -779,10 +521,10 @@ export default function HomePage() {
                             />
                         </div>
                     </div>
-                    <div className='flex h-[70vh] min-h-[600px] flex-col lg:col-span-1'>
+                    <div className='flex h-full min-h-[600px] flex-col lg:col-span-3'>
                         {error && (
                             <Alert variant='destructive' className='mb-4 border-red-500/50 bg-red-900/20 text-red-300'>
-                                <AlertTitle className='text-red-200'>Error</AlertTitle>
+                                <AlertTitle className='text-red-200'>错误</AlertTitle>
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
@@ -797,21 +539,6 @@ export default function HomePage() {
                             baseImagePreviewUrl={editSourceImagePreviewUrls[0] || null}
                         />
                     </div>
-                </div>
-
-                <div className='min-h-[450px]'>
-                    <HistoryPanel
-                        history={history}
-                        onSelectImage={handleHistorySelect}
-                        onClearHistory={handleClearHistory}
-                        getImageSrc={getImageSrc}
-                        onDeleteItemRequest={handleRequestDeleteItem}
-                        itemPendingDeleteConfirmation={itemToDeleteConfirm}
-                        onConfirmDeletion={handleConfirmDeletion}
-                        onCancelDeletion={handleCancelDeletion}
-                        deletePreferenceDialogValue={dialogCheckboxStateSkipConfirm}
-                        onDeletePreferenceDialogChange={setDialogCheckboxStateSkipConfirm}
-                    />
                 </div>
             </div>
         </main>

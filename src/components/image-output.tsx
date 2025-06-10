@@ -18,7 +18,7 @@ type ImageOutputProps = {
     isLoading: boolean;
     onSendToEdit: (filename: string) => void;
     currentMode: 'generate' | 'edit';
-    baseImagePreviewUrl: string | null;
+    baseImagePreviewUrl?: string | null;
 };
 
 const getGridColsClass = (count: number): string => {
@@ -50,7 +50,7 @@ export function ImageOutput({
     const canSendToEdit = !isLoading && isSingleImageView && imageBatch && imageBatch[viewMode];
 
     return (
-        <div className='flex h-full min-h-[300px] w-full flex-col items-center justify-between gap-4 overflow-hidden rounded-lg border border-white/20 bg-black p-4'>
+        <div className='flex h-full min-h-[300px] w-full flex-col items-center justify-between gap-4 overflow-hidden rounded-lg border border-border bg-card p-4'>
             <div className='relative flex h-full w-full flex-grow items-center justify-center overflow-hidden'>
                 {isLoading ? (
                     currentMode === 'edit' && baseImagePreviewUrl ? (
@@ -63,15 +63,15 @@ export function ImageOutput({
                                 className='blur-md filter'
                                 unoptimized
                             />
-                            <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white/80'>
+                            <div className='absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-card-foreground/80'>
                                 <Loader2 className='mb-2 h-8 w-8 animate-spin' />
-                                <p>Editing image...</p>
+                                <p>图像编辑中...</p>
                             </div>
                         </div>
                     ) : (
-                        <div className='flex flex-col items-center justify-center text-white/60'>
+                        <div className='flex flex-col items-center justify-center text-muted-foreground'>
                             <Loader2 className='mb-2 h-8 w-8 animate-spin' />
-                            <p>Generating image...</p>
+                            <p>生成图像中...</p>
                         </div>
                     )
                 ) : imageBatch && imageBatch.length > 0 ? (
@@ -81,10 +81,10 @@ export function ImageOutput({
                             {imageBatch.map((img, index) => (
                                 <div
                                     key={img.filename}
-                                    className='relative aspect-square overflow-hidden rounded border border-white/10'>
+                                    className='relative aspect-square overflow-hidden rounded border border-border'>
                                     <Image
                                         src={img.path}
-                                        alt={`Generated image ${index + 1}`}
+                                        alt={`生成的图像 ${index + 1}`}
                                         fill
                                         style={{ objectFit: 'contain' }}
                                         sizes='(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw'
@@ -103,31 +103,31 @@ export function ImageOutput({
                             unoptimized
                         />
                     ) : (
-                        <div className='text-center text-white/40'>
-                            <p>Error displaying image.</p>
+                        <div className='text-center text-muted-foreground'>
+                            <p>显示图像时出错。</p>
                         </div>
                     )
                 ) : (
-                    <div className='text-center text-white/40'>
-                        <p>Your generated image will appear here.</p>
+                    <div className='text-center text-muted-foreground'>
+                        <p>您生成的图像将显示在这里。</p>
                     </div>
                 )}
             </div>
 
             <div className='flex h-10 w-full shrink-0 items-center justify-center gap-4'>
                 {showCarousel && (
-                    <div className='flex items-center gap-1.5 rounded-md border border-white/10 bg-neutral-800/50 p-1'>
+                    <div className='flex items-center gap-1.5 rounded-md border border-border bg-card/50 p-1'>
                         <Button
                             variant='ghost'
                             size='icon'
                             className={cn(
                                 'h-8 w-8 rounded p-1',
                                 viewMode === 'grid'
-                                    ? 'bg-white/20 text-white'
-                                    : 'text-white/50 hover:bg-white/10 hover:text-white/80'
+                                    ? 'bg-primary/20 text-card-foreground'
+                                    : 'text-muted-foreground hover:bg-card/10 hover:text-card-foreground/80'
                             )}
                             onClick={() => onViewChange('grid')}
-                            aria-label='Show grid view'>
+                            aria-label='显示网格视图'>
                             <Grid className='h-4 w-4' />
                         </Button>
                         {imageBatch.map((img, index) => (
@@ -162,12 +162,12 @@ export function ImageOutput({
                     onClick={handleSendClick}
                     disabled={!canSendToEdit}
                     className={cn(
-                        'shrink-0 border-white/20 text-white/80 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-50',
+                        'shrink-0 border-border text-muted-foreground hover:bg-card/10 hover:text-card-foreground disabled:pointer-events-none disabled:opacity-50',
                         // Hide button completely if grid view is active and there are multiple images
                         showCarousel && viewMode === 'grid' ? 'invisible' : 'visible'
                     )}>
                     <Send className='mr-2 h-4 w-4' />
-                    Send to Edit
+                    发送到编辑
                 </Button>
             </div>
         </div>

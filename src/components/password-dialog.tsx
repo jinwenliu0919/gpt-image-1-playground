@@ -24,7 +24,7 @@ export function PasswordDialog({
     isOpen,
     onOpenChange,
     onSave,
-    title = 'Configure Password',
+    title = '配置密码',
     description
 }: PasswordDialogProps) {
     const [currentPassword, setCurrentPassword] = React.useState('');
@@ -46,10 +46,10 @@ export function PasswordDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleDialogClose}>
-            <DialogContent className='border-white/20 bg-black text-white sm:max-w-[425px]'>
+            <DialogContent className='border-border bg-card text-card-foreground sm:max-w-[425px]'>
                 <DialogHeader>
-                    <DialogTitle className='text-white'>{title}</DialogTitle>
-                    {description && <DialogDescription className='text-white/60'>{description}</DialogDescription>}
+                    <DialogTitle className='text-card-foreground'>{title}</DialogTitle>
+                    {description && <DialogDescription className='text-muted-foreground'>{description}</DialogDescription>}
                 </DialogHeader>
                 <div className='grid gap-4 py-4'>
                     <div className='grid grid-cols-1 items-center gap-4'>
@@ -57,10 +57,10 @@ export function PasswordDialog({
                             ref={inputRef}
                             id='password-input'
                             type='password'
-                            placeholder='Enter your password'
+                            placeholder='请输入您的密码'
                             value={currentPassword}
                             onChange={(e) => setCurrentPassword(e.target.value)}
-                            className='col-span-1 border-white/20 bg-black text-white placeholder:text-white/40 focus:border-white/50 focus:ring-white/50'
+                            className='col-span-1 border-border bg-card text-card-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring'
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && currentPassword.trim()) {
                                     e.preventDefault();
@@ -75,8 +75,8 @@ export function PasswordDialog({
                         type='button'
                         onClick={handleSave}
                         disabled={!currentPassword.trim()}
-                        className='bg-white px-6 text-black hover:bg-white/90 disabled:bg-white/10 disabled:text-white/40'>
-                        Save
+                        className='bg-primary px-6 text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground'>
+                        保存
                     </Button>
                 </DialogFooter>
             </DialogContent>
