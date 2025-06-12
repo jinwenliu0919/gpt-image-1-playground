@@ -14,7 +14,10 @@ import {
     HardDrive, 
     Database, 
     FileImage,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Clock,
+    MessageSquare,
+    Trash2
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -27,7 +30,12 @@ interface TaskHistoryPanelProps {
 
 const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString();
+    return date.toLocaleString(undefined, {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 };
 
 export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPanelProps) {
@@ -121,101 +129,115 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
     };
 
     const renderHistoryItem = (item: HistoryMetadata) => {
-        const firstImage = item.images?.[0];
-        const imageCount = item.images?.length ?? 0;
-        const isMultiImage = imageCount > 1;
+        const images = item.images || [];
+        const imageCount = images.length;
         const originalStorageMode = item.storageModeUsed || 'fs';
         const outputFormat = item.output_format || 'png';
 
-        let thumbnailUrl: string | undefined;
-        if (firstImage) {
-            if (originalStorageMode === 'indexeddb') {
-                thumbnailUrl = getImageSrc(firstImage.filename);
-            } else {
-                thumbnailUrl = `/api/image/${firstImage.filename}`;
-            }
-        }
-
         return (
-            <div className="relative group">
-                <button
-                    onClick={() => onSelectImage(item)}
-                    className="relative block w-full overflow-hidden rounded-md border border-border transition-all duration-150 group-hover:border-primary focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-black focus:outline-none"
-                    aria-label={`查看图像批次，生成于 ${new Date(item.timestamp).toLocaleString()}`}
-                >
-                    <div className="aspect-video">
-                        {thumbnailUrl ? (
-                            <Image
-                                src={thumbnailUrl}
-                                alt={`批次预览，生成于 ${new Date(item.timestamp).toLocaleString()}`}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                            />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-card/10 text-card-foreground">
-                                ?
-                            </div>
-                        )}
+            <div className="relative rounded-md border border-border overflow-hidden bg-card/20 hover:border-primary/50 transition-colors">
+                {/* 顶部标题栏 - 显示时间和模式 */}
+                <div className="flex items-center justify-between p-2 border-b border-border bg-card/30">
+                    <div className="flex items-center gap-2 text-sm">
+                        <Clock size={14} className="text-muted-foreground" />
+                        <span className="text-muted-foreground">{formatDate(item.timestamp)}</span>
                     </div>
-                    
-                    <div
-                        className={cn(
-                            'absolute top-1 left-1 z-10 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-card-foreground',
+                    <div className="flex items-center gap-2">
+                        <div className={cn(
+                            'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-card-foreground',
                             item.mode === 'edit' ? 'bg-orange-600/80' : 'bg-blue-600/80'
-                        )}
-                    >
-                        {item.mode === 'edit' ? (
-                            <Pencil size={12} />
-                        ) : (
-                            <Sparkles size={12} />
-                        )}
-                        {item.mode === 'edit' ? '编辑' : '创建'}
-                    </div>
-                    
-                    {isMultiImage && (
-                        <div className='absolute right-1 bottom-1 z-10 flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[12px] text-card-foreground'>
-                            <Layers size={16} />
-                            {imageCount}
-                        </div>
-                    )}
-                    
-                    <div className='absolute bottom-1 left-1 z-10 flex items-center gap-1'>
-                        <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[11px] text-card-foreground/70'>
-                            {originalStorageMode === 'fs' ? (
-                                <HardDrive size={12} className='text-card-foreground/40' />
+                        )}>
+                            {item.mode === 'edit' ? (
+                                <Pencil size={12} />
                             ) : (
-                                <Database size={12} className='text-blue-400' />
+                                <Sparkles size={12} />
+                            )}
+                            {item.mode === 'edit' ? '编辑' : '创建'}
+                        </div>
+                        
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteHistoryItem(item);
+                            }}
+                        >
+                            <Trash2 size={14} className="text-muted-foreground hover:text-red-400" />
+                        </Button>
+                    </div>
+                </div>
+                
+                {/* 提示词区域 */}
+                <div className="p-2 border-b border-border/50 bg-card/10">
+                    <div className="flex items-start gap-2">
+                        <MessageSquare size={14} className="text-muted-foreground mt-1 flex-shrink-0" />
+                        <p className="text-xs text-muted-foreground line-clamp-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-1">{item.prompt}</p>
+                    </div>
+                </div>
+                
+                {/* 图片网格区域 - 使用水平滚动 */}
+                <div className="p-2 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                    <div className="flex gap-2" style={{ minWidth: 'min-content' }}>
+                        {images.map((img, index) => {
+                            let thumbnailUrl: string | undefined;
+                            if (originalStorageMode === 'indexeddb') {
+                                thumbnailUrl = getImageSrc(img.filename);
+                            } else {
+                                thumbnailUrl = `/api/image/${img.filename}`;
+                            }
+                            
+                            return (
+                                <button
+                                    key={img.filename}
+                                    onClick={() => onSelectImage(item)}
+                                    className="relative rounded-md overflow-hidden border border-border/50 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary flex-shrink-0"
+                                >
+                                    <div className="w-32 h-32 md:w-40 md:h-40">
+                                        {thumbnailUrl ? (
+                                            <Image
+                                                src={thumbnailUrl}
+                                                alt={`图片 ${index + 1}，生成于 ${new Date(item.timestamp).toLocaleString()}`}
+                                                fill
+                                                className="object-cover"
+                                                unoptimized
+                                            />
+                                        ) : (
+                                            <div className="flex h-full w-full items-center justify-center bg-card/10 text-card-foreground">
+                                                <ImageIcon size={24} className="text-muted-foreground opacity-50" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                {/* 底部信息区域 */}
+                <div className="flex items-center justify-between p-2 border-t border-border/50 bg-card/10">
+                    <div className="flex items-center gap-1">
+                        <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                            {originalStorageMode === 'fs' ? (
+                                <HardDrive size={10} className='text-card-foreground/40' />
+                            ) : (
+                                <Database size={10} className='text-blue-400' />
                             )}
                             <span>{originalStorageMode === 'fs' ? 'file' : 'db'}</span>
                         </div>
-                        {item.output_format && (
-                            <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[11px] text-card-foreground/70'>
-                                <FileImage size={12} className='text-card-foreground/40' />
+                        {outputFormat && (
+                            <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                <FileImage size={10} className='text-card-foreground/40' />
                                 <span>{outputFormat.toUpperCase()}</span>
                             </div>
                         )}
                     </div>
                     
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="absolute bottom-2 right-2">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="bg-card/80 text-xs text-card-foreground hover:bg-card"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteHistoryItem(item);
-                                }}
-                            >
-                                删除
-                            </Button>
-                        </div>
+                    <div className="flex items-center gap-1">
+                        <Layers size={14} className="text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">{imageCount} 张图片</span>
                     </div>
-                </button>
-                
-                <div className="mt-1 text-xs text-muted-foreground truncate">
-                    {formatDate(item.timestamp)}
                 </div>
             </div>
         );
@@ -232,7 +254,7 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
                         <p>生成的图像将显示在这里</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-4">
                         {combinedItems.map((item) => (
                             <div key={`${item.type}-${item.timestamp}`}>
                                 {item.type === 'task' 
