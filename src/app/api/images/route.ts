@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        const mode = formData.get('mode') as 'generate' | 'edit' | null;
+        let mode = formData.get('mode') as 'generate' | 'edit' | 'completion' | null;
         const prompt = formData.get('prompt') as string | null;
 
         console.log(`Mode: ${mode}, Prompt: ${prompt ? prompt.substring(0, 50) + '...' : 'N/A'}`);
@@ -90,9 +90,20 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Missing required parameters: mode and prompt' }, { status: 400 });
         }
 
-        let result: OpenAI.Images.ImagesResponse;
-        const model = 'gpt-image-1';
+        const imageFiles: File[] = [];
+        for (const [key, value] of formData.entries()) {
+            if (key.startsWith('image_') && value instanceof File) {
+                imageFiles.push(value);
+            }
+        }
+        if(imageFiles.length > 0) {
+            mode = 'edit';
+        }
 
+        let result: OpenAI.Images.ImagesResponse | OpenAI.Completions.Completion;
+        //const model = 'gpt-image-1';
+        // const model = 'sora_image';
+        const model = 'gpt-4o-image-vip';
         if (mode === 'generate') {
             const n = parseInt((formData.get('n') as string) || '1', 10);
             const size = (formData.get('size') as OpenAI.Images.ImageGenerateParams['size']) || '1024x1024';
@@ -130,12 +141,7 @@ export async function POST(request: NextRequest) {
             const size = (formData.get('size') as OpenAI.Images.ImageEditParams['size']) || 'auto';
             const quality = (formData.get('quality') as OpenAI.Images.ImageEditParams['quality']) || 'auto';
 
-            const imageFiles: File[] = [];
-            for (const [key, value] of formData.entries()) {
-                if (key.startsWith('image_') && value instanceof File) {
-                    imageFiles.push(value);
-                }
-            }
+           
 
             if (imageFiles.length === 0) {
                 return NextResponse.json({ error: 'No image file provided for editing.' }, { status: 400 });
@@ -162,7 +168,28 @@ export async function POST(request: NextRequest) {
                 mask: maskFile ? maskFile.name : 'N/A'
             });
             result = await openai.images.edit(params);
-        } else {
+        } 
+        else if (mode === 'completion') {
+            const n = parseInt((formData.get('n') as string) || '1', 10);
+            const size = (formData.get('size') as OpenAI.Images.ImageCreateVariationParams['size']) || '1024x1024';
+
+            const promptMap = {
+                "role": "user",
+                "prompt": formData.get('prompt') as string,
+                "n": n,
+                "size": size,
+            }
+
+            const params: OpenAI.Completions.CompletionCreateParamsNonStreaming = {
+                model: 'gpt-4o-mini',
+                prompt: JSON.stringify(promptMap),
+            };
+            
+            result = await openai.completions.create(params);
+            console.log('OpenAI API call successful.', result);
+            return NextResponse.json(result);
+        }
+        else {
             return NextResponse.json({ error: 'Invalid mode specified' }, { status: 400 });
         }
 

@@ -17,7 +17,7 @@ type ImageOutputProps = {
     altText?: string;
     isLoading: boolean;
     onSendToEdit: (filename: string) => void;
-    currentMode: 'generate' | 'edit';
+    currentMode: 'generate' | 'edit' | 'completion';
     baseImagePreviewUrl?: string | null;
 };
 

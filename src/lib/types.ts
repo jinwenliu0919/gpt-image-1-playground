@@ -14,7 +14,7 @@ export type HistoryMetadata = {
     background: GenerationFormData['background'];
     moderation: GenerationFormData['moderation'];
     prompt: string;
-    mode: 'generate' | 'edit';
+    mode: 'generate' | 'edit' | 'completion';
     costDetails: CostDetails | null;
     output_format?: GenerationFormData['output_format'];
 }; 

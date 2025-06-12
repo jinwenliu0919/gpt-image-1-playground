@@ -3,7 +3,7 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ModeToggleProps = {
-    currentMode: 'generate' | 'edit';
+    currentMode: 'generate' | 'edit' | 'completion';
     onModeChange: (mode: 'generate' | 'edit') => void;
 };
 
@@ -21,7 +21,7 @@ export function ModeToggle({ currentMode, onModeChange }: ModeToggleProps) {
                             ? 'border-primary bg-primary text-primary-foreground'
                             : 'border-dashed border-muted-foreground bg-transparent text-muted-foreground hover:border-card-foreground hover:text-card-foreground'
                     } `}>
-                    生成
+                    文生图
                 </TabsTrigger>
                 <TabsTrigger
                     value='edit'
@@ -30,7 +30,7 @@ export function ModeToggle({ currentMode, onModeChange }: ModeToggleProps) {
                             ? 'border-primary bg-primary text-primary-foreground'
                             : 'border-dashed border-muted-foreground bg-transparent text-muted-foreground hover:border-card-foreground hover:text-card-foreground'
                     } `}>
-                    编辑
+                    图生图
                 </TabsTrigger>
             </TabsList>
         </Tabs>

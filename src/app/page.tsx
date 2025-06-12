@@ -47,7 +47,7 @@ type DrawnPoint = {
 const MAX_EDIT_IMAGES = 10;
 
 export default function HomePage() {
-    const [mode, setMode] = React.useState<'generate' | 'edit'>('generate');
+    const [mode, setMode] = React.useState<'generate' | 'edit' | 'completion'>('edit');
     const [isLoading, setIsLoading] = React.useState(false);
     const [isSendingToEdit, setIsSendingToEdit] = React.useState(false);
     
@@ -95,6 +95,8 @@ export default function HomePage() {
     const [genCompression, setGenCompression] = React.useState([100]);
     const [genBackground, setGenBackground] = React.useState<GenerationFormData['background']>('auto');
     const [genModeration, setGenModeration] = React.useState<GenerationFormData['moderation']>('auto');
+    const [genReferenceImage, setGenReferenceImage] = React.useState<File | null>(null);
+    const [genReferenceImages, setGenReferenceImages] = React.useState<File[]>([]);
 
     React.useEffect(() => {
         return () => {
@@ -209,7 +211,7 @@ export default function HomePage() {
         }
         apiFormData.append('mode', mode);
 
-        if (mode === 'generate') {
+        if (mode === 'generate' || mode === 'completion') {
             const genData = formData as GenerationFormData;
             apiFormData.append('prompt', genPrompt);
             apiFormData.append('n', genN[0].toString());
@@ -230,6 +232,11 @@ export default function HomePage() {
             }
             apiFormData.append('background', genBackground);
             apiFormData.append('moderation', genModeration);
+            if (genReferenceImages && genReferenceImages.length > 0) {
+                genReferenceImages.forEach((file, index) => {
+                    apiFormData.append(`reference_image_${index}`, file, file.name);
+                });
+            }
         } else {
             apiFormData.append('prompt', editPrompt);
             apiFormData.append('n', editN[0].toString());
@@ -448,6 +455,14 @@ export default function HomePage() {
         }
     };
 
+    React.useEffect(() => {
+        if (genReferenceImage) {
+            if (genReferenceImages.length === 0 || genReferenceImages[0] !== genReferenceImage) {
+                setGenReferenceImages([genReferenceImage]);
+            }
+        }
+    }, [genReferenceImage]);
+
     return (
         <main className='w-full bg-background p-2 text-foreground h-[calc(100vh-80px)]'>
             <PasswordDialog
@@ -495,6 +510,10 @@ export default function HomePage() {
                                 setBackground={setGenBackground}
                                 moderation={genModeration}
                                 setModeration={setGenModeration}
+                                referenceImage={genReferenceImage}
+                                setReferenceImage={setGenReferenceImage}
+                                referenceImages={genReferenceImages}
+                                setReferenceImages={setGenReferenceImages}
                             />
                         </div>
                         <div className={mode === 'edit' ? 'block h-full w-full' : 'hidden'}>
