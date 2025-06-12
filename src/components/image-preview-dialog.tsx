@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, ZoomIn, ZoomOut, X, Maximize2 } from 'lucide-react';
+import { Download, ZoomIn, ZoomOut, X, Maximize2, AlertCircle } from 'lucide-react';
 import type { HistoryMetadata } from '@/lib/types';
+import { VisuallyHidden } from './ui/visually-hidden';
 
 interface ImagePreviewDialogProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function ImagePreviewDialog({
   const [scale, setScale] = React.useState(1);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const [imageSize, setImageSize] = React.useState<{ width: number, height: number } | null>(null);
+  const [imageError, setImageError] = React.useState<string | null>(null);
   const imageRef = React.useRef<HTMLImageElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   
@@ -34,6 +36,7 @@ export function ImagePreviewDialog({
       setCurrentImageIndex(selectedImageIndex);
       setScale(1);
       setImageSize(null);
+      setImageError(null);
     }
   }, [isOpen, selectedImageIndex]);
 
@@ -44,20 +47,78 @@ export function ImagePreviewDialog({
     }
   }, [isFullscreen]);
 
-  // 如果没有历史记录项或图片，则不显示对话框
-  if (!historyItem || !historyItem.images || historyItem.images.length === 0) {
+  // 安全检查：如果没有历史记录项或图片，则不显示对话框
+  if (!historyItem) {
     return null;
   }
 
-  const images = historyItem.images;
-  const currentImage = images[currentImageIndex];
+  // 安全检查：确保images数组存在
+  const images = historyItem.images || [];
+  if (images.length === 0) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="p-4 bg-background">
+          <DialogTitle>图片预览错误</DialogTitle>
+          <div className="flex flex-col items-center justify-center p-8 gap-4">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+            <p className="text-center">无法加载图片，未找到图片数据</p>
+            <Button onClick={onClose}>关闭</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // 安全检查：确保当前索引有效
+  const safeIndex = Math.max(0, Math.min(currentImageIndex, images.length - 1));
+  if (safeIndex !== currentImageIndex) {
+    setCurrentImageIndex(safeIndex);
+  }
+  
+  // 安全检查：确保当前图片对象存在
+  const currentImage = images[safeIndex];
+  if (!currentImage) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="p-4 bg-background">
+          <DialogTitle>图片预览错误</DialogTitle>
+          <div className="flex flex-col items-center justify-center p-8 gap-4">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+            <p className="text-center">无法加载图片，图片数据不完整</p>
+            <Button onClick={onClose}>关闭</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // 安全检查：确保filename存在
+  if (!currentImage.filename) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="p-4 bg-background">
+          <DialogTitle>图片预览错误</DialogTitle>
+          <div className="flex flex-col items-center justify-center p-8 gap-4">
+            <AlertCircle className="h-12 w-12 text-red-500" />
+            <p className="text-center">无法加载图片，文件名缺失</p>
+            <Button onClick={onClose}>关闭</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   
   // 获取当前图片的URL
   let imageUrl: string | undefined;
-  if (historyItem.storageModeUsed === 'indexeddb') {
-    imageUrl = getImageSrc(currentImage.filename);
-  } else {
-    imageUrl = `/api/image/${currentImage.filename}`;
+  try {
+    if (historyItem.storageModeUsed === 'indexeddb') {
+      imageUrl = getImageSrc(currentImage.filename);
+    } else {
+      imageUrl = `/api/image/${currentImage.filename}`;
+    }
+  } catch (error) {
+    console.error('获取图片URL时出错:', error);
+    setImageError('获取图片URL时出错');
   }
 
   // 处理缩放功能
@@ -82,15 +143,29 @@ export function ImagePreviewDialog({
         width: imageRef.current.naturalWidth,
         height: imageRef.current.naturalHeight
       });
+      setImageError(null);
     }
+  };
+
+  // 处理图片加载错误
+  const handleImageError = () => {
+    setImageError('图片加载失败');
+    console.error('图片加载失败:', currentImage.filename);
   };
 
   // 处理下载功能
   const handleDownload = async () => {
-    if (!imageUrl) return;
+    if (!imageUrl || !currentImage.filename) {
+      setImageError('无法下载图片，URL或文件名缺失');
+      return;
+    }
     
     try {
       const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
@@ -105,20 +180,29 @@ export function ImagePreviewDialog({
       setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error) {
       console.error('下载图片失败:', error);
+      setImageError('下载图片失败');
     }
   };
 
   // 处理图片切换
   const handlePrevImage = () => {
-    setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+    if (images.length <= 1) return;
+    
+    const newIndex = safeIndex > 0 ? safeIndex - 1 : images.length - 1;
+    setCurrentImageIndex(newIndex);
     setScale(1); // 重置缩放
     setImageSize(null); // 重置图片尺寸
+    setImageError(null); // 重置错误状态
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+    if (images.length <= 1) return;
+    
+    const newIndex = safeIndex < images.length - 1 ? safeIndex + 1 : 0;
+    setCurrentImageIndex(newIndex);
     setScale(1); // 重置缩放
     setImageSize(null); // 重置图片尺寸
+    setImageError(null); // 重置错误状态
   };
 
   // 计算图片容器样式，根据图片尺寸和窗口大小调整
@@ -172,6 +256,9 @@ export function ImagePreviewDialog({
             : 'max-w-5xl w-[90vw] max-h-[90vh]'
         }`}
       >
+        <VisuallyHidden>
+          <DialogTitle>图片预览</DialogTitle>
+        </VisuallyHidden>
         {/* 关闭按钮 */}
         <Button
           variant="ghost"
@@ -230,7 +317,7 @@ export function ImagePreviewDialog({
         {/* 图片导航 (如果有多张图片) */}
         {images.length > 1 && (
           <div className="absolute bottom-4 right-4 bg-black/60 rounded-full px-3 py-1 text-white text-xs">
-            {currentImageIndex + 1} / {images.length}
+            {safeIndex + 1} / {images.length}
           </div>
         )}
         
@@ -242,7 +329,7 @@ export function ImagePreviewDialog({
             cursor: scale > 1 ? 'move' : 'default',
           }}
         >
-          {imageUrl ? (
+          {imageUrl && !imageError ? (
             <div 
               className="relative transition-transform duration-200 ease-out flex items-center justify-center min-h-full min-w-full"
               style={{ 
@@ -252,17 +339,22 @@ export function ImagePreviewDialog({
               <img
                 ref={imageRef}
                 src={imageUrl}
-                alt={`图片 ${currentImageIndex + 1}，生成于 ${new Date(historyItem.timestamp).toLocaleString()}`}
+                alt={`图片 ${safeIndex + 1}，生成于 ${new Date(historyItem.timestamp).toLocaleString()}`}
                 className="object-contain"
                 style={{ 
                   ...getImageContainerStyle(),
                   margin: 'auto',
                 }}
                 onLoad={handleImageLoad}
+                onError={handleImageError}
               />
             </div>
           ) : (
-            <div className="text-white">图片加载失败</div>
+            <div className="flex flex-col items-center justify-center p-8 gap-4">
+              <AlertCircle className="h-12 w-12 text-red-500" />
+              <div className="text-white text-center">{imageError || '图片加载失败'}</div>
+              <Button variant="outline" onClick={onClose}>关闭</Button>
+            </div>
           )}
         </div>
         

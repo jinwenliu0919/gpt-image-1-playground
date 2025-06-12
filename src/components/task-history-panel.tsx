@@ -30,6 +30,80 @@ import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialo
 import { DeleteTaskConfirmationDialog } from '@/components/delete-task-confirmation-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+// 添加错误边界组件
+class ErrorBoundary extends React.Component<
+    { 
+        children: React.ReactNode, 
+        fallback: React.ReactNode | ((props: { error: Error | null, resetErrorBoundary: () => void }) => React.ReactNode) 
+    },
+    { hasError: boolean, error: Error | null }
+> {
+    constructor(props: { 
+        children: React.ReactNode, 
+        fallback: React.ReactNode | ((props: { error: Error | null, resetErrorBoundary: () => void }) => React.ReactNode) 
+    }) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        // 更新状态，下次渲染时将显示降级UI
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        // 可以在这里记录错误信息
+        console.error('组件错误:', error, errorInfo);
+    }
+
+    resetErrorBoundary = () => {
+        this.setState({ hasError: false, error: null });
+    }
+
+    render() {
+        if (this.state.hasError) {
+            // 如果fallback是函数，传入error和reset方法
+            if (typeof this.props.fallback === 'function') {
+                return this.props.fallback({
+                    error: this.state.error,
+                    resetErrorBoundary: this.resetErrorBoundary
+                });
+            }
+            // 显示降级UI
+            return this.props.fallback;
+        }
+
+        return this.props.children;
+    }
+}
+
+// 错误回退组件
+const ImagePreviewErrorFallback = ({ onClose, error, resetErrorBoundary }: { 
+    onClose: () => void, 
+    error: Error | null, 
+    resetErrorBoundary?: () => void 
+}) => {
+    return (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <div className="flex flex-col items-center justify-center gap-4 p-4">
+                <AlertCircle className="h-12 w-12 text-red-500" />
+                <h3 className="text-lg font-medium">图片预览出现错误</h3>
+                <p className="text-sm text-center text-muted-foreground">
+                    {error ? `错误信息: ${error.message}` : '图片预览加载失败，请稍后再试'}
+                </p>
+                <div className="flex gap-2">
+                    <Button onClick={onClose}>关闭</Button>
+                    {resetErrorBoundary && (
+                        <Button variant="outline" onClick={resetErrorBoundary}>
+                            重试
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 interface TaskHistoryPanelProps {
     onSelectTask: (taskId: string) => void;
 }
@@ -96,6 +170,25 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
 
     // 处理图片点击事件
     const handleImageClick = (item: HistoryMetadata, imageIndex: number) => {
+        // 安全检查：确保历史项和图片数组存在
+        if (!item || !item.images || !Array.isArray(item.images) || item.images.length === 0) {
+            console.error('无效的历史记录项或图片数组', item);
+            return;
+        }
+
+        // 安全检查：确保图片索引有效
+        if (imageIndex < 0 || imageIndex >= item.images.length) {
+            console.error('图片索引超出范围', imageIndex, item.images.length);
+            return;
+        }
+
+        // 安全检查：确保图片对象有效
+        const imageItem = item.images[imageIndex];
+        if (!imageItem || !imageItem.filename) {
+            console.error('图片对象无效或缺少文件名', imageItem);
+            return;
+        }
+
         setSelectedHistoryItem(item);
         setSelectedImageIndex(imageIndex);
         setPreviewDialogOpen(true);
@@ -240,6 +333,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
     };
 
     const renderHistoryItem = (item: HistoryMetadata) => {
+        // 安全检查：确保images数组存在且有效
         const images = item.images || [];
         const imageCount = images.length;
         const originalStorageMode = item.storageModeUsed || 'fs';
@@ -306,16 +400,27 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 <div className="p-2 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     <div className="flex gap-2" style={{ minWidth: 'min-content' }}>
                         {images.map((img, index) => {
+                            // 安全检查：确保图片对象有效
+                            if (!img || !img.filename) {
+                                console.warn('跳过无效的图片对象', img);
+                                return null;
+                            }
+
                             let thumbnailUrl: string | undefined;
-                            if (originalStorageMode === 'indexeddb') {
-                                thumbnailUrl = getImageSrc(img.filename);
-                            } else {
-                                thumbnailUrl = `/api/image/${img.filename}`;
+                            try {
+                                if (originalStorageMode === 'indexeddb') {
+                                    thumbnailUrl = getImageSrc(img.filename);
+                                } else {
+                                    thumbnailUrl = `/api/image/${img.filename}`;
+                                }
+                            } catch (error) {
+                                console.error('获取图片URL时出错:', error, img.filename);
+                                thumbnailUrl = undefined;
                             }
 
                             return (
                                 <button
-                                    key={img.filename}
+                                    key={img.filename || `img-${index}`}
                                     onClick={() => handleImageClick(item, index)}
                                     className="relative rounded-md overflow-hidden hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-primary flex-shrink-0 bg-card/30"
                                 >
@@ -332,13 +437,13 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                                             />
                                         ) : (
                                             <div className="flex h-20 w-20 items-center justify-center bg-card/10 text-card-foreground">
-                                                <ImageIcon size={24} className="text-muted-foreground opacity-50" />
+                                                <AlertCircle size={24} className="text-red-400 opacity-70" />
                                             </div>
                                         )}
                                     </div>
                                 </button>
                             );
-                        })}
+                        }).filter(Boolean)} {/* 过滤掉null项 */}
                     </div>
                 </div>
 
@@ -420,14 +525,25 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 </CardContent>
             </Card>
 
-            {/* 图片预览对话框 */}
-            <ImagePreviewDialog
-                isOpen={previewDialogOpen}
-                onClose={() => setPreviewDialogOpen(false)}
-                historyItem={selectedHistoryItem}
-                selectedImageIndex={selectedImageIndex}
-                getImageSrc={getImageSrc}
-            />
+            {/* 使用错误边界包裹图片预览对话框 */}
+            <ErrorBoundary 
+                fallback={({ error, resetErrorBoundary }) => (
+                    <ImagePreviewErrorFallback 
+                        onClose={() => setPreviewDialogOpen(false)} 
+                        error={error} 
+                        resetErrorBoundary={resetErrorBoundary}
+                    />
+                )}
+            >
+                {/* 图片预览对话框 */}
+                <ImagePreviewDialog
+                    isOpen={previewDialogOpen}
+                    onClose={() => setPreviewDialogOpen(false)}
+                    historyItem={selectedHistoryItem}
+                    selectedImageIndex={selectedImageIndex}
+                    getImageSrc={getImageSrc}
+                />
+            </ErrorBoundary>
 
             {/* 删除确认对话框 */}
             <DeleteConfirmationDialog

@@ -371,10 +371,7 @@ export function HistoryPanel({
                                                 </DialogTrigger>
                                                 <DialogContent className='border-border bg-card text-card-foreground sm:max-w-[625px]'>
                                                     <DialogHeader>
-                                                        <DialogTitle className='text-card-foreground'>提示词</DialogTitle>
-                                                        <DialogDescription className='sr-only'>
-                                                            用于生成此批次图像的完整提示词。
-                                                        </DialogDescription>
+                                                        <DialogTitle className='text-card-foreground'>提示词详情</DialogTitle>
                                                     </DialogHeader>
                                                     <div className='max-h-[400px] overflow-y-auto rounded-md border border-border bg-card p-3 py-4 text-sm text-card-foreground scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                                                         {item.prompt || '未记录提示词。'}
@@ -422,12 +419,7 @@ export function HistoryPanel({
                                                 </DialogTrigger>
                                                 <DialogContent className='border-border bg-card text-card-foreground sm:max-w-md'>
                                                     <DialogHeader>
-                                                        <DialogTitle className='text-card-foreground'>
-                                                            确认删除
-                                                        </DialogTitle>
-                                                        <DialogDescription className='pt-2 text-card-foreground'>
-                                                            您确定要删除此历史记录条目吗？这将删除 {item.images.length} 张图像。此操作无法撤消。
-                                                        </DialogDescription>
+                                                        <DialogTitle className='text-card-foreground'>删除确认</DialogTitle>
                                                     </DialogHeader>
                                                     <div className='flex items-center space-x-2 py-2'>
                                                         <Checkbox

@@ -19,6 +19,7 @@ import {
 import type { HistoryMetadata } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { Badge } from './ui/badge';
+//import { VisuallyHidden } from './ui/visually-hidden';
 
 interface FavoriteDetailsDialogProps {
     isOpen: boolean;
