@@ -92,6 +92,42 @@ export default function HomePage() {
     const [genReferenceImage, setGenReferenceImage] = React.useState<File | null>(null);
     const [genReferenceImages, setGenReferenceImages] = React.useState<File[]>([]);
 
+    // 检查是否有从收藏页面应用的参数
+    React.useEffect(() => {
+        const applyParamsStr = localStorage.getItem('applyFavoriteParams');
+        if (applyParamsStr) {
+            try {
+                const params = JSON.parse(applyParamsStr);
+                
+                // 设置模式
+                if (params.mode) {
+                    setMode(params.mode);
+                }
+                
+                // 根据模式应用不同参数
+                if (params.mode === 'edit') {
+                    setEditPrompt(params.prompt || '');
+                    setEditQuality(params.quality || 'auto');
+                } else {
+                    // 生成模式参数
+                    setGenPrompt(params.prompt || '');
+                    setGenQuality(params.quality || 'auto');
+                    setGenBackground(params.background || 'auto');
+                    setGenModeration(params.moderation || 'auto');
+                    if (params.output_format) {
+                        setGenOutputFormat(params.output_format);
+                    }
+                }
+                
+                // 清除应用的参数
+                localStorage.removeItem('applyFavoriteParams');
+            } catch (err) {
+                console.error('解析收藏参数失败:', err);
+                localStorage.removeItem('applyFavoriteParams');
+            }
+        }
+    }, []);
+
     React.useEffect(() => {
         return () => {
             editSourceImagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -407,6 +443,7 @@ export default function HomePage() {
             <div className='w-full space-y-6'>
                 <div className='grid grid-cols-1 gap-2 lg:grid-cols-4'>
                     <div className='relative flex h-[calc(100vh-80px)] min-h-[600px] flex-col lg:col-span-1'>
+                        
                         <div className={mode === 'generate' ? 'block h-full w-full' : 'hidden'}>
                             <GenerationForm
                                 onSubmit={handleApiCall}

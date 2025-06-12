@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { db, type ImageRecord } from '@/lib/db';
+import { db, type ImageRecord, type FavoriteRecord } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { HistoryMetadata, TaskRecord, TaskStatus } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -28,6 +28,8 @@ console.log(
 type HistoryContextType = {
     history: HistoryMetadata[];
     tasks: TaskRecord[];
+    favorites: FavoriteRecord[];
+    favoriteItems: HistoryMetadata[];
     addHistoryEntry: (entry: HistoryMetadata) => void;
     clearHistory: () => void;
     getImageSrc: (filename: string) => string | undefined;
@@ -52,6 +54,12 @@ type HistoryContextType = {
     itemToDeleteTaskConfirm: TaskRecord | null;
     confirmTaskDeletion: () => void;
     cancelTaskDeletion: () => void;
+    addToFavorites: (item: HistoryMetadata, note?: string) => Promise<void>;
+    removeFromFavorites: (favoriteId: string) => Promise<void>;
+    isFavorite: (timestamp: number) => boolean;
+    getFavoriteId: (timestamp: number) => string | undefined;
+    updateFavoriteNote: (favoriteId: string, note: string) => Promise<void>;
+    applyFavoriteParams: (item: HistoryMetadata) => void;
 };
 
 const HistoryContext = React.createContext<HistoryContextType | undefined>(undefined);
@@ -71,6 +79,14 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
 
     const allDbImages = useLiveQuery<ImageRecord[] | undefined>(() => db.images.toArray(), []);
     const tasks = useLiveQuery<TaskRecord[] | undefined>(() => db.tasks.orderBy('timestamp').reverse().toArray(), []) || [];
+    const favorites = useLiveQuery<FavoriteRecord[] | undefined>(() => db.favorites.orderBy('addedAt').reverse().toArray(), []) || [];
+
+    // 收藏项目列表
+    const favoriteItems = React.useMemo(() => {
+        return history.filter(item => 
+            favorites.some(fav => fav.historyItemTimestamp === item.timestamp)
+        );
+    }, [history, favorites]);
 
     const getImageSrc = React.useCallback(
         (filename: string): string | undefined => {
@@ -377,9 +393,76 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         setItemToDeleteTaskConfirm(null);
     };
 
+    // 添加到收藏
+    const addToFavorites = async (item: HistoryMetadata, note?: string) => {
+        try {
+            const favoriteId = uuidv4();
+            const newFavorite: FavoriteRecord = {
+                id: favoriteId,
+                historyItemTimestamp: item.timestamp,
+                addedAt: Date.now(),
+                note
+            };
+            
+            await db.favorites.add(newFavorite);
+            console.log(`Added item to favorites: ${favoriteId}`);
+            return;
+        } catch (e) {
+            console.error('Failed to add to favorites:', e);
+            setError(e instanceof Error ? e.message : '添加收藏失败');
+            throw e;
+        }
+    };
+    
+    // 从收藏中移除
+    const removeFromFavorites = async (favoriteId: string) => {
+        try {
+            await db.favorites.delete(favoriteId);
+            console.log(`Removed item from favorites: ${favoriteId}`);
+            return;
+        } catch (e) {
+            console.error('Failed to remove from favorites:', e);
+            setError(e instanceof Error ? e.message : '移除收藏失败');
+            throw e;
+        }
+    };
+    
+    // 检查是否已收藏
+    const isFavorite = (timestamp: number) => {
+        return favorites.some(fav => fav.historyItemTimestamp === timestamp);
+    };
+    
+    // 获取收藏ID
+    const getFavoriteId = (timestamp: number) => {
+        const favorite = favorites.find(fav => fav.historyItemTimestamp === timestamp);
+        return favorite?.id;
+    };
+    
+    // 更新收藏备注
+    const updateFavoriteNote = async (favoriteId: string, note: string) => {
+        try {
+            await db.favorites.update(favoriteId, { note });
+            console.log(`Updated favorite note: ${favoriteId}`);
+            return;
+        } catch (e) {
+            console.error('Failed to update favorite note:', e);
+            setError(e instanceof Error ? e.message : '更新收藏备注失败');
+            throw e;
+        }
+    };
+    
+    // 应用收藏项目的参数
+    const applyFavoriteParams = (item: HistoryMetadata) => {
+        // 这个函数将在收藏页面中调用，用于将收藏项目的参数应用到表单中
+        console.log('Applying favorite params:', item);
+        // 具体实现将在页面组件中处理
+    };
+
     const value = {
         history,
         tasks,
+        favorites,
+        favoriteItems,
         addHistoryEntry,
         clearHistory: handleClearHistory,
         getImageSrc,
@@ -403,7 +486,13 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         handleDeleteTask,
         itemToDeleteTaskConfirm,
         confirmTaskDeletion: handleConfirmTaskDeletion,
-        cancelTaskDeletion: handleCancelTaskDeletion
+        cancelTaskDeletion: handleCancelTaskDeletion,
+        addToFavorites,
+        removeFromFavorites,
+        isFavorite,
+        getFavoriteId,
+        updateFavoriteNote,
+        applyFavoriteParams
     };
 
     return <HistoryContext.Provider value={value}>{children}</HistoryContext.Provider>;

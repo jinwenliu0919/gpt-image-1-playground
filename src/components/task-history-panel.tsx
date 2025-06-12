@@ -19,13 +19,16 @@ import {
     MessageSquare,
     Trash2,
     Copy,
-    Check
+    Check,
+    Star,
+    StarOff
 } from 'lucide-react';
 import Image from 'next/image';
 import type { TaskRecord, HistoryMetadata } from '@/lib/types';
 import { ImagePreviewDialog } from '@/components/image-preview-dialog';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 import { DeleteTaskConfirmationDialog } from '@/components/delete-task-confirmation-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TaskHistoryPanelProps {
     onSelectTask: (taskId: string) => void;
@@ -55,7 +58,11 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         handleDeleteTask,
         itemToDeleteTaskConfirm,
         confirmTaskDeletion,
-        cancelTaskDeletion
+        cancelTaskDeletion,
+        addToFavorites,
+        removeFromFavorites,
+        isFavorite,
+        getFavoriteId
     } = useHistory();
 
     // 添加图片预览状态
@@ -103,6 +110,23 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
             setTimeout(() => setCopiedItemId(null), 1500);
         } catch (err) {
             console.error('复制提示词失败: ', err);
+        }
+    };
+
+    // 处理收藏和取消收藏
+    const handleToggleFavorite = async (e: React.MouseEvent, item: HistoryMetadata) => {
+        e.stopPropagation();
+        try {
+            if (isFavorite(item.timestamp)) {
+                const favoriteId = getFavoriteId(item.timestamp);
+                if (favoriteId) {
+                    await removeFromFavorites(favoriteId);
+                }
+            } else {
+                await addToFavorites(item);
+            }
+        } catch (err) {
+            console.error('收藏操作失败:', err);
         }
     };
 
@@ -223,6 +247,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
 
         // 为每个历史记录项生成唯一ID
         const itemId = `history-${item.timestamp}`;
+        const isItemFavorite = isFavorite(item.timestamp);
 
         return (
             <div className="relative rounded-md overflow-hidden bg-background/50 hover:bg-background/70 transition-colors shadow-sm">
@@ -233,17 +258,27 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <span className="text-muted-foreground">{formatDate(item.timestamp)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* <div className={cn(
-                            'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-card-foreground',
-                            item.mode === 'edit' ? 'bg-orange-600/80' : 'bg-blue-600/80'
-                        )}>
-                            {item.mode === 'edit' ? (
-                                <Pencil size={12} />
-                            ) : (
-                                <Sparkles size={12} />
-                            )}
-                            {item.mode === 'edit' ? '编辑' : '创建'}
-                        </div> */}
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={(e) => handleToggleFavorite(e, item)}
+                                    >
+                                        {isItemFavorite ? (
+                                            <Star size={14} className="text-yellow-400 fill-yellow-400" />
+                                        ) : (
+                                            <StarOff size={14} className="text-muted-foreground hover:text-yellow-400" />
+                                        )}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {isItemFavorite ? '取消收藏' : '添加到收藏'}
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
 
                         <Button
                             variant="ghost"

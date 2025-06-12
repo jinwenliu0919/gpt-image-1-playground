@@ -24,6 +24,12 @@ export function Header() {
                         >
                             历史
                         </Link>
+                        <Link
+                            href='/favorites'
+                            className='px-6 py-2.5 transition-colors hover:bg-primary/10 hover:text-primary text-foreground/60 font-medium'
+                        >
+                            我的收藏
+                        </Link>
                     </nav>
                 </div>
                 <div className='flex items-center bg-muted/30 p-2 rounded-full'>
