@@ -55,8 +55,7 @@ export default function HomePage() {
         clientPasswordHash,
         createTask,
         updateTaskStatus,
-        completeTaskWithImages,
-        handleHistorySelect
+        completeTaskWithImages
     } = useHistory();
 
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
@@ -367,11 +366,6 @@ export default function HomePage() {
         }
     }, [genReferenceImage]);
 
-    // 处理历史记录选择
-    const handleSelectHistoryItem = (item: HistoryMetadata) => {
-        handleHistorySelect(item);
-    };
-    
     // 处理任务选择
     const handleSelectTask = async (taskId: string) => {
         console.log(`Selected task: ${taskId}`);
@@ -479,7 +473,6 @@ export default function HomePage() {
                         
                         <div className='flex-grow h-[calc(100vh-80px)] overflow-hidden'>
                             <TaskHistoryPanel 
-                                onSelectImage={handleSelectHistoryItem}
                                 onSelectTask={handleSelectTask}
                             />
                         </div>
