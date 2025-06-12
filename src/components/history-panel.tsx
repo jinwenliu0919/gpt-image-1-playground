@@ -1,6 +1,6 @@
 'use client';
 
-import type { HistoryMetadata } from '@/app/page';
+import type { HistoryMetadata } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -166,7 +166,7 @@ export function HistoryPanel({
                     </Button>
                 )}
             </CardHeader>
-            <CardContent className='flex-grow overflow-y-auto p-4'>
+            <CardContent className='flex-grow overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                 {history.length === 0 ? (
                     <div className='flex h-full items-center justify-center text-card-foreground/40'>
                         <p>生成的图像将显示在这里。</p>
@@ -376,7 +376,7 @@ export function HistoryPanel({
                                                             用于生成此批次图像的完整提示词。
                                                         </DialogDescription>
                                                     </DialogHeader>
-                                                    <div className='max-h-[400px] overflow-y-auto rounded-md border border-border bg-card p-3 py-4 text-sm text-card-foreground'>
+                                                    <div className='max-h-[400px] overflow-y-auto rounded-md border border-border bg-card p-3 py-4 text-sm text-card-foreground scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                                                         {item.prompt || '未记录提示词。'}
                                                     </div>
                                                     <DialogFooter>

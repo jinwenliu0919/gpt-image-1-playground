@@ -245,7 +245,7 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
 
     return (
         <Card className="w-full h-full flex flex-col overflow-hidden">
-            <CardHeader className="px-4 py-3 border-b border-border">
+            <CardHeader className="px-4 py-3 border-b border-border flex-shrink-0">
                 <CardTitle className="text-lg font-medium">生成历史</CardTitle>
             </CardHeader>
             <CardContent className="flex-grow overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
@@ -254,7 +254,7 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
                         <p>生成的图像将显示在这里</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-4 min-h-min">
+                    <div className="flex flex-col gap-4">
                         {combinedItems.map((item) => (
                             <div key={`${item.type}-${item.timestamp}`}>
                                 {item.type === 'task' 

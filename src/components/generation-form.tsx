@@ -316,7 +316,7 @@ export function GenerationForm({
                 <ModeToggle currentMode={currentMode} onModeChange={onModeChange} />
             </CardHeader>
             <form onSubmit={handleSubmit} className='flex h-full flex-1 flex-col overflow-hidden'>
-                <CardContent className='flex-1 space-y-4 overflow-y-auto p-4'>
+                <CardContent className='flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                     <div className='space-y-1'>
                         <Label htmlFor='prompt' className='text-sm text-card-foreground'>
                             提示词
@@ -357,7 +357,7 @@ export function GenerationForm({
                             disabled={isLoading}
                         />
                         {referenceImagePreviews.length > 0 && (
-                            <div className='flex flex-wrap gap-2 mt-2'>
+                            <div className='flex flex-wrap gap-2 mt-2 overflow-y-auto max-h-40 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                                 {referenceImagePreviews.map((preview, index) => (
                                     <div key={index} className='relative w-16 h-16 rounded-md overflow-hidden border border-border'>
                                         <img

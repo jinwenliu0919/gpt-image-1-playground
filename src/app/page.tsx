@@ -2,16 +2,14 @@
 
 import { EditingForm, type EditingFormData } from '@/components/editing-form';
 import { GenerationForm, type GenerationFormData } from '@/components/generation-form';
-import { ImageOutput } from '@/components/image-output';
 import { TaskHistoryPanel } from '@/components/task-history-panel';
 import { PasswordDialog } from '@/components/password-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { calculateApiCost } from '@/lib/cost-utils';
-import { db, type ImageRecord } from '@/lib/db';
+import { db } from '@/lib/db';
 import * as React from 'react';
 import { useHistory } from '@/contexts/HistoryContext';
 import type { HistoryMetadata } from '@/lib/types';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 const explicitModeClient = process.env.NEXT_PUBLIC_IMAGE_STORAGE_MODE;
 const vercelEnvClient = process.env.NEXT_PUBLIC_VERCEL_ENV;
@@ -49,13 +47,10 @@ const MAX_EDIT_IMAGES = 10;
 
 export default function HomePage() {
     const [mode, setMode] = React.useState<'generate' | 'edit' | 'completion'>('edit');
-    const [isSendingToEdit, setIsSendingToEdit] = React.useState(false);
     
     const { 
         error, 
         setError, 
-        latestImageBatch, 
-        setLatestImageBatch,
         isPasswordRequiredByBackend,
         clientPasswordHash,
         createTask,
@@ -64,12 +59,9 @@ export default function HomePage() {
         handleHistorySelect
     } = useHistory();
 
-    const [imageOutputView, setImageOutputView] = React.useState<'grid' | number>('grid');
     const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
     const [passwordDialogContext, setPasswordDialogContext] = React.useState<'initial' | 'retry'>('initial');
     const [lastApiCallArgs, setLastApiCallArgs] = React.useState<[GenerationFormData | EditingFormData] | null>(null);
-
-    const allDbImages = useLiveQuery<ImageRecord[] | undefined>(() => db.images.toArray(), []);
 
     const [editImageFiles, setEditImageFiles] = React.useState<File[]>([]);
     const [editSourceImagePreviewUrls, setEditSourceImagePreviewUrls] = React.useState<string[]>([]);
@@ -322,10 +314,9 @@ export default function HomePage() {
                     taskId: taskId
                 };
 
-                let newImageBatchPromises: Promise<{ path: string; filename: string } | null>[] = [];
                 if (effectiveStorageModeClient === 'indexeddb') {
                     console.log('Processing images for IndexedDB storage...');
-                    newImageBatchPromises = result.images.map(async (img: ApiImageResponseItem) => {
+                    const newImageBatchPromises = result.images.map(async (img: ApiImageResponseItem) => {
                         if (img.b64_json) {
                             try {
                                 const byteCharacters = atob(img.b64_json);
@@ -340,41 +331,24 @@ export default function HomePage() {
 
                                 await db.images.put({ filename: img.filename, blob });
                                 console.log(`Saved ${img.filename} to IndexedDB with type ${actualMimeType}.`);
-
-                                const blobUrl = URL.createObjectURL(blob);
-                                return { filename: img.filename, path: blobUrl };
+                                return true;
                             } catch (dbError) {
                                 console.error(`Error saving blob ${img.filename} to IndexedDB:`, dbError);
                                 setError(`Failed to save image ${img.filename} to local database.`);
-                                return null;
+                                return false;
                             }
                         } else {
                             console.warn(`Image ${img.filename} missing b64_json in indexeddb mode.`);
-                            return null;
+                            return false;
                         }
                     });
-                } else {
-                    newImageBatchPromises = result.images
-                        .filter((img: ApiImageResponseItem) => !!img.path)
-                        .map((img: ApiImageResponseItem) =>
-                            Promise.resolve({
-                                path: img.path!,
-                                filename: img.filename
-                            })
-                        );
+
+                    // 等待所有图像处理完成
+                    await Promise.all(newImageBatchPromises);
                 }
 
-                const processedImages = (await Promise.all(newImageBatchPromises)).filter(Boolean) as {
-                    path: string;
-                    filename: string;
-                }[];
-
                 await completeTaskWithImages(taskId, newHistoryEntry);
-                
-                setLatestImageBatch(processedImages);
-                setImageOutputView(processedImages.length > 1 ? 'grid' : 0);
             } else {
-                setLatestImageBatch(null);
                 throw new Error('API response did not contain valid image data or filenames.');
             }
         } catch (err: unknown) {
@@ -382,79 +356,6 @@ export default function HomePage() {
             console.error(`API Call Error after ${durationMs}ms:`, err);
             const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
             setError(errorMessage);
-            setLatestImageBatch(null);
-        }
-    };
-
-    const handleSendToEdit = async (filename: string) => {
-        if (isSendingToEdit) return;
-        setIsSendingToEdit(true);
-        setError(null);
-
-        const alreadyExists = editImageFiles.some((file) => file.name === filename);
-        if (mode === 'edit' && alreadyExists) {
-            console.log(`Image ${filename} already in edit list.`);
-            setIsSendingToEdit(false);
-            return;
-        }
-
-        if (mode === 'edit' && editImageFiles.length >= MAX_EDIT_IMAGES) {
-            setError(`Cannot add more than ${MAX_EDIT_IMAGES} images to the edit form.`);
-            setIsSendingToEdit(false);
-            return;
-        }
-
-        console.log(`Sending image ${filename} to edit...`);
-
-        try {
-            let blob: Blob | undefined;
-            let mimeType: string = 'image/png';
-
-            if (effectiveStorageModeClient === 'indexeddb') {
-                console.log(`Fetching blob ${filename} from IndexedDB...`);
-
-                const record = allDbImages?.find((img) => img.filename === filename);
-                if (record?.blob) {
-                    blob = record.blob;
-                    mimeType = blob.type || mimeType;
-                    console.log(`Found blob ${filename} in IndexedDB.`);
-                } else {
-                    throw new Error(`Image ${filename} not found in local database.`);
-                }
-            } else {
-                console.log(`Fetching image ${filename} from API...`);
-                const response = await fetch(`/api/image/${filename}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch image: ${response.statusText}`);
-                }
-                blob = await response.blob();
-                mimeType = response.headers.get('Content-Type') || mimeType;
-                console.log(`Fetched image ${filename} from API.`);
-            }
-
-            if (!blob) {
-                throw new Error(`Could not retrieve image data for ${filename}.`);
-            }
-
-            const newFile = new File([blob], filename, { type: mimeType });
-            const newPreviewUrl = URL.createObjectURL(blob);
-
-            editSourceImagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
-
-            setEditImageFiles([newFile]);
-            setEditSourceImagePreviewUrls([newPreviewUrl]);
-
-            if (mode === 'generate') {
-                setMode('edit');
-            }
-
-            console.log(`Successfully set ${filename} in edit form.`);
-        } catch (err: unknown) {
-            console.error('Error sending image to edit:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Failed to send image to edit form.';
-            setError(errorMessage);
-        } finally {
-            setIsSendingToEdit(false);
         }
     };
 
@@ -532,7 +433,7 @@ export default function HomePage() {
                         <div className={mode === 'edit' ? 'block h-full w-full' : 'hidden'}>
                             <EditingForm
                                 onSubmit={handleApiCall}
-                                isLoading={isSendingToEdit}
+                                isLoading={false}
                                 currentMode={mode}
                                 onModeChange={setMode}
                                 isPasswordRequiredByBackend={isPasswordRequiredByBackend}
@@ -570,34 +471,17 @@ export default function HomePage() {
                     </div>
                     <div className='flex h-full min-h-[600px] flex-col lg:col-span-3'>
                         {error && (
-                            <Alert variant='destructive' className='mb-4 border-red-500/50 bg-red-900/20 text-red-300'>
+                            <Alert variant='destructive' className='mb-4 border-red-500/50 bg-red-900/20 text-red-300 flex-shrink-0'>
                                 <AlertTitle className='text-red-200'>错误</AlertTitle>
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
                         
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
-                            {/* 左侧：当前选中图像预览区 */}
-                            <div className="h-full">
-                                <ImageOutput
-                                    imageBatch={latestImageBatch}
-                                    viewMode={imageOutputView}
-                                    onViewChange={setImageOutputView}
-                                    altText='Generated image output'
-                                    isLoading={isSendingToEdit}
-                                    onSendToEdit={handleSendToEdit}
-                                    currentMode={mode}
-                                    baseImagePreviewUrl={editSourceImagePreviewUrls[0] || null}
-                                />
-                            </div>
-                            
-                            {/* 右侧：任务和历史记录列表 */}
-                            <div className="h-full">
-                                <TaskHistoryPanel 
-                                    onSelectImage={handleSelectHistoryItem}
-                                    onSelectTask={handleSelectTask}
-                                />
-                            </div>
+                        <div className='flex-grow h-[calc(100vh-80px)] overflow-hidden'>
+                            <TaskHistoryPanel 
+                                onSelectImage={handleSelectHistoryItem}
+                                onSelectTask={handleSelectTask}
+                            />
                         </div>
                     </div>
                 </div>

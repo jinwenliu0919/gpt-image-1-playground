@@ -474,7 +474,7 @@ export function EditingForm({
                 <ModeToggle currentMode={currentMode} onModeChange={onModeChange} />
             </CardHeader>
             <form onSubmit={handleSubmit} className='flex h-full flex-1 flex-col overflow-hidden'>
-                <CardContent className='flex-1 space-y-6 overflow-y-auto p-2'>
+                <CardContent className='flex-1 space-y-6 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                     <div className='space-y-2'>
                         <Label htmlFor='edit-prompt' className='text-sm font-medium text-card-foreground'>
                             提示词
