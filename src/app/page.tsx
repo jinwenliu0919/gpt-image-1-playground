@@ -3,6 +3,7 @@
 import { EditingForm, type EditingFormData } from '@/components/editing-form';
 import { GenerationForm, type GenerationFormData } from '@/components/generation-form';
 import { ImageOutput } from '@/components/image-output';
+import { TaskHistoryPanel } from '@/components/task-history-panel';
 import { PasswordDialog } from '@/components/password-dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { calculateApiCost } from '@/lib/cost-utils';
@@ -48,17 +49,19 @@ const MAX_EDIT_IMAGES = 10;
 
 export default function HomePage() {
     const [mode, setMode] = React.useState<'generate' | 'edit' | 'completion'>('edit');
-    const [isLoading, setIsLoading] = React.useState(false);
     const [isSendingToEdit, setIsSendingToEdit] = React.useState(false);
     
     const { 
         error, 
         setError, 
         latestImageBatch, 
-        setLatestImageBatch, 
-        addHistoryEntry,
+        setLatestImageBatch,
         isPasswordRequiredByBackend,
-        clientPasswordHash
+        clientPasswordHash,
+        createTask,
+        updateTaskStatus,
+        completeTaskWithImages,
+        handleHistorySelect
     } = useHistory();
 
     const [imageOutputView, setImageOutputView] = React.useState<'grid' | number>('grid');
@@ -194,11 +197,8 @@ export default function HomePage() {
         const startTime = Date.now();
         let durationMs = 0;
 
-        setIsLoading(true);
         setError(null);
-        setLatestImageBatch(null);
-        setImageOutputView('grid');
-
+        
         const apiFormData = new FormData();
         if (isPasswordRequiredByBackend && clientPasswordHash) {
             apiFormData.append('passwordHash', clientPasswordHash);
@@ -206,10 +206,15 @@ export default function HomePage() {
             setError('Password is required. Please configure the password by clicking the lock icon.');
             setPasswordDialogContext('initial');
             setIsPasswordDialogOpen(true);
-            setIsLoading(false);
             return;
         }
         apiFormData.append('mode', mode);
+
+        let taskPrompt = '';
+        let taskQuality: GenerationFormData['quality'] = 'auto';
+        let taskBackground: GenerationFormData['background'] = 'auto';
+        let taskModeration: GenerationFormData['moderation'] = 'auto';
+        let taskOutputFormat: GenerationFormData['output_format'] = 'png';
 
         if (mode === 'generate' || mode === 'completion') {
             const genData = formData as GenerationFormData;
@@ -237,6 +242,12 @@ export default function HomePage() {
                     apiFormData.append(`reference_image_${index}`, file, file.name);
                 });
             }
+            
+            taskPrompt = genPrompt;
+            taskQuality = genQuality;
+            taskBackground = genBackground;
+            taskModeration = genModeration;
+            taskOutputFormat = genOutputFormat;
         } else {
             apiFormData.append('prompt', editPrompt);
             apiFormData.append('n', editN[0].toString());
@@ -249,11 +260,25 @@ export default function HomePage() {
             if (editGeneratedMaskFile) {
                 apiFormData.append('mask', editGeneratedMaskFile, editGeneratedMaskFile.name);
             }
+            
+            taskPrompt = editPrompt;
+            taskQuality = editQuality;
         }
 
-        console.log('Sending request to /api/images with mode:', mode);
+        const taskId = createTask({
+            prompt: taskPrompt,
+            mode,
+            quality: taskQuality,
+            background: taskBackground,
+            moderation: taskModeration,
+            output_format: taskOutputFormat
+        });
+        
+        console.log('Sending request to /api/images with mode:', mode, 'taskId:', taskId);
 
         try {
+            await updateTaskStatus(taskId, 'processing');
+            
             const response = await fetch('/api/images', {
                 method: 'POST',
                 body: apiFormData
@@ -267,7 +292,7 @@ export default function HomePage() {
                     setPasswordDialogContext('retry');
                     setLastApiCallArgs([formData]);
                     setIsPasswordDialogOpen(true);
-
+                    await updateTaskStatus(taskId, 'failed', '授权失败：无效或缺少密码');
                     return;
                 }
                 throw new Error(result.error || `API request failed with status ${response.status}`);
@@ -279,26 +304,6 @@ export default function HomePage() {
                 durationMs = Date.now() - startTime;
                 console.log(`API call successful. Duration: ${durationMs}ms`);
 
-                let historyQuality: GenerationFormData['quality'] = 'auto';
-                let historyBackground: GenerationFormData['background'] = 'auto';
-                let historyModeration: GenerationFormData['moderation'] = 'auto';
-                let historyOutputFormat: GenerationFormData['output_format'] = 'png';
-                let historyPrompt: string = '';
-
-                if (mode === 'generate') {
-                    historyQuality = genQuality;
-                    historyBackground = genBackground;
-                    historyModeration = genModeration;
-                    historyOutputFormat = genOutputFormat;
-                    historyPrompt = genPrompt;
-                } else {
-                    historyQuality = editQuality;
-                    historyBackground = 'auto';
-                    historyModeration = 'auto';
-                    historyOutputFormat = 'png';
-                    historyPrompt = editPrompt;
-                }
-
                 const costDetails = calculateApiCost(result.usage);
 
                 const batchTimestamp = Date.now();
@@ -307,13 +312,14 @@ export default function HomePage() {
                     images: result.images.map((img: { filename: string }) => ({ filename: img.filename })),
                     storageModeUsed: effectiveStorageModeClient,
                     durationMs: durationMs,
-                    quality: historyQuality,
-                    background: historyBackground,
-                    moderation: historyModeration,
-                    output_format: historyOutputFormat,
-                    prompt: historyPrompt,
+                    quality: taskQuality,
+                    background: taskBackground,
+                    moderation: taskModeration,
+                    output_format: taskOutputFormat,
+                    prompt: taskPrompt,
                     mode: mode,
-                    costDetails: costDetails
+                    costDetails: costDetails,
+                    taskId: taskId
                 };
 
                 let newImageBatchPromises: Promise<{ path: string; filename: string } | null>[] = [];
@@ -363,10 +369,10 @@ export default function HomePage() {
                     filename: string;
                 }[];
 
+                await completeTaskWithImages(taskId, newHistoryEntry);
+                
                 setLatestImageBatch(processedImages);
                 setImageOutputView(processedImages.length > 1 ? 'grid' : 0);
-
-                addHistoryEntry(newHistoryEntry);
             } else {
                 setLatestImageBatch(null);
                 throw new Error('API response did not contain valid image data or filenames.');
@@ -377,9 +383,6 @@ export default function HomePage() {
             const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
             setError(errorMessage);
             setLatestImageBatch(null);
-        } finally {
-            if (durationMs === 0) durationMs = Date.now() - startTime;
-            setIsLoading(false);
         }
     };
 
@@ -463,6 +466,16 @@ export default function HomePage() {
         }
     }, [genReferenceImage]);
 
+    // 处理历史记录选择
+    const handleSelectHistoryItem = (item: HistoryMetadata) => {
+        handleHistorySelect(item);
+    };
+    
+    // 处理任务选择
+    const handleSelectTask = async (taskId: string) => {
+        console.log(`Selected task: ${taskId}`);
+    };
+
     return (
         <main className='w-full bg-background p-2 text-foreground h-[calc(100vh-80px)]'>
             <PasswordDialog
@@ -482,7 +495,7 @@ export default function HomePage() {
                         <div className={mode === 'generate' ? 'block h-full w-full' : 'hidden'}>
                             <GenerationForm
                                 onSubmit={handleApiCall}
-                                isLoading={isLoading}
+                                isLoading={false}
                                 currentMode={mode}
                                 onModeChange={setMode}
                                 isPasswordRequiredByBackend={isPasswordRequiredByBackend}
@@ -519,7 +532,7 @@ export default function HomePage() {
                         <div className={mode === 'edit' ? 'block h-full w-full' : 'hidden'}>
                             <EditingForm
                                 onSubmit={handleApiCall}
-                                isLoading={isLoading || isSendingToEdit}
+                                isLoading={isSendingToEdit}
                                 currentMode={mode}
                                 onModeChange={setMode}
                                 isPasswordRequiredByBackend={isPasswordRequiredByBackend}
@@ -562,16 +575,30 @@ export default function HomePage() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         )}
-                        <ImageOutput
-                            imageBatch={latestImageBatch}
-                            viewMode={imageOutputView}
-                            onViewChange={setImageOutputView}
-                            altText='Generated image output'
-                            isLoading={isLoading || isSendingToEdit}
-                            onSendToEdit={handleSendToEdit}
-                            currentMode={mode}
-                            baseImagePreviewUrl={editSourceImagePreviewUrls[0] || null}
-                        />
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
+                            {/* 左侧：当前选中图像预览区 */}
+                            <div className="h-full">
+                                <ImageOutput
+                                    imageBatch={latestImageBatch}
+                                    viewMode={imageOutputView}
+                                    onViewChange={setImageOutputView}
+                                    altText='Generated image output'
+                                    isLoading={isSendingToEdit}
+                                    onSendToEdit={handleSendToEdit}
+                                    currentMode={mode}
+                                    baseImagePreviewUrl={editSourceImagePreviewUrls[0] || null}
+                                />
+                            </div>
+                            
+                            {/* 右侧：任务和历史记录列表 */}
+                            <div className="h-full">
+                                <TaskHistoryPanel 
+                                    onSelectImage={handleSelectHistoryItem}
+                                    onSelectTask={handleSelectTask}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

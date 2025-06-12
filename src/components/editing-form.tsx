@@ -750,13 +750,13 @@ export function EditingForm({
                         </RadioGroup>
                     </div>
                 </CardContent>
-                <CardFooter className='border-t border-border bg-card/50 p-2'>
+                <CardFooter className='border-t border-border p-4'>
                     <Button
                         type='submit'
-                        disabled={isLoading || !editPrompt || imageFiles.length === 0}
+                        disabled={isLoading || !editPrompt || imageFiles.length === 0 || (editShowMaskEditor && !editIsMaskSaved)}
                         className='flex w-full items-center justify-center gap-2 rounded-md bg-primary text-sm text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground'>
-                        {isLoading && <Loader2 className='h-4 w-4 animate-spin' />}
-                        {isLoading ? '生成中...' : '生成图片'}
+                        {isLoading && <Loader2 className='h-3.5 w-3.5 animate-spin' />}
+                        {isLoading ? '请求已发送...' : '编辑'}
                     </Button>
                 </CardFooter>
             </form>

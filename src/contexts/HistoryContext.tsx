@@ -3,7 +3,8 @@
 import * as React from 'react';
 import { db, type ImageRecord } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { HistoryMetadata } from '@/lib/types';
+import type { HistoryMetadata, TaskRecord, TaskStatus } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Determine storage mode once
 const explicitModeClient = process.env.NEXT_PUBLIC_IMAGE_STORAGE_MODE;
@@ -26,22 +27,27 @@ console.log(
 
 type HistoryContextType = {
     history: HistoryMetadata[];
+    tasks: TaskRecord[];
     addHistoryEntry: (entry: HistoryMetadata) => void;
+    clearHistory: () => void;
     getImageSrc: (filename: string) => string | undefined;
-    handleClearHistory: () => Promise<void>;
-    handleRequestDeleteItem: (item: HistoryMetadata) => void;
+    handleHistorySelect: (item: HistoryMetadata) => void;
+    handleDeleteHistoryItem: (item: HistoryMetadata) => void;
     itemToDeleteConfirm: HistoryMetadata | null;
-    handleConfirmDeletion: () => void;
-    handleCancelDeletion: () => void;
+    confirmDeletion: () => void;
+    cancelDeletion: () => void;
+    skipDeleteConfirmation: boolean;
     dialogCheckboxStateSkipConfirm: boolean;
     setDialogCheckboxStateSkipConfirm: (value: boolean) => void;
     isPasswordRequiredByBackend: boolean | null;
     clientPasswordHash: string | null;
     latestImageBatch: { path: string; filename: string }[] | null;
     setLatestImageBatch: React.Dispatch<React.SetStateAction<{ path: string; filename: string }[] | null>>;
-    handleHistorySelect: (item: HistoryMetadata) => void;
     error: string | null;
     setError: React.Dispatch<React.SetStateAction<string | null>>;
+    createTask: (params: Omit<TaskRecord, 'id' | 'timestamp' | 'status'>) => string;
+    updateTaskStatus: (id: string, status: TaskStatus, error?: string) => void;
+    completeTaskWithImages: (taskId: string, historyEntry: HistoryMetadata) => void;
 };
 
 const HistoryContext = React.createContext<HistoryContextType | undefined>(undefined);
@@ -56,10 +62,10 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
     const [isPasswordRequiredByBackend, setIsPasswordRequiredByBackend] = React.useState<boolean | null>(null);
     const [clientPasswordHash, setClientPasswordHash] = React.useState<string | null>(null);
     const [latestImageBatch, setLatestImageBatch] = React.useState<{ path: string; filename: string }[] | null>(null);
-    const [imageOutputView, setImageOutputView] = React.useState<'grid' | number>('grid');
     const [error, setError] = React.useState<string | null>(null);
 
     const allDbImages = useLiveQuery<ImageRecord[] | undefined>(() => db.images.toArray(), []);
+    const tasks = useLiveQuery<TaskRecord[] | undefined>(() => db.tasks.orderBy('timestamp').reverse().toArray(), []) || [];
 
     const getImageSrc = React.useCallback(
         (filename: string): string | undefined => {
@@ -241,12 +247,11 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         }
     };
     
-    const handleRequestDeleteItem = (item: HistoryMetadata) => {
-        if (!skipDeleteConfirmation) {
-            setDialogCheckboxStateSkipConfirm(skipDeleteConfirmation);
-            setItemToDeleteConfirm(item);
-        } else {
+    const handleDeleteHistoryItem = (item: HistoryMetadata) => {
+        if (skipDeleteConfirmation) {
             executeDeleteItem(item);
+        } else {
+            setItemToDeleteConfirm(item);
         }
     };
     
@@ -284,24 +289,76 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const createTask = (params: Omit<TaskRecord, 'id' | 'timestamp' | 'status'>) => {
+        const taskId = uuidv4();
+        const newTask: TaskRecord = {
+            id: taskId,
+            timestamp: Date.now(),
+            status: 'pending',
+            ...params
+        };
+        
+        db.tasks.put(newTask).catch(err => {
+            console.error('Failed to create task:', err);
+            setError('创建任务失败');
+        });
+        
+        return taskId;
+    };
+    
+    const updateTaskStatus = async (id: string, status: TaskStatus, error?: string) => {
+        try {
+            const task = await db.tasks.get(id);
+            if (task) {
+                await db.tasks.update(id, { status, ...(error ? { error } : {}) });
+            }
+        } catch (err) {
+            console.error('Failed to update task status:', err);
+            setError('更新任务状态失败');
+        }
+    };
+    
+    const completeTaskWithImages = async (taskId: string, historyEntry: HistoryMetadata) => {
+        try {
+            // 更新任务状态
+            await updateTaskStatus(taskId, 'completed');
+            
+            // 添加关联的历史记录
+            const entryWithTaskId = {
+                ...historyEntry,
+                taskId
+            };
+            
+            addHistoryEntry(entryWithTaskId);
+        } catch (err) {
+            console.error('Failed to complete task with images:', err);
+            setError('完成任务失败');
+        }
+    };
+
     const value = {
         history,
+        tasks,
         addHistoryEntry,
+        clearHistory: handleClearHistory,
         getImageSrc,
-        handleClearHistory,
-        handleRequestDeleteItem,
+        handleHistorySelect,
+        handleDeleteHistoryItem,
         itemToDeleteConfirm,
-        handleConfirmDeletion,
-        handleCancelDeletion,
+        confirmDeletion: handleConfirmDeletion,
+        cancelDeletion: handleCancelDeletion,
+        skipDeleteConfirmation,
         dialogCheckboxStateSkipConfirm,
         setDialogCheckboxStateSkipConfirm,
         isPasswordRequiredByBackend,
         clientPasswordHash,
         latestImageBatch,
         setLatestImageBatch,
-        handleHistorySelect,
         error,
         setError,
+        createTask,
+        updateTaskStatus,
+        completeTaskWithImages
     };
 
     return <HistoryContext.Provider value={value}>{children}</HistoryContext.Provider>;

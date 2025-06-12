@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
+import type { TaskRecord } from './types';
 
 export interface ImageRecord {
     filename: string;
@@ -7,6 +8,7 @@ export interface ImageRecord {
 
 export class ImageDB extends Dexie {
     images!: EntityTable<ImageRecord, 'filename'>;
+    tasks!: EntityTable<TaskRecord, 'id'>;
 
     constructor() {
         super('ImageDB');
@@ -15,7 +17,13 @@ export class ImageDB extends Dexie {
             images: '&filename'
         });
 
+        this.version(2).stores({
+            images: '&filename',
+            tasks: '&id, status, timestamp'
+        });
+
         this.images = this.table('images');
+        this.tasks = this.table('tasks');
     }
 }
 

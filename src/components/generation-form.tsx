@@ -551,7 +551,7 @@ export function GenerationForm({
                         disabled={isLoading || !prompt}
                         className='flex w-full items-center justify-center gap-2 rounded-md bg-primary text-sm text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground'>
                         {isLoading && <Loader2 className='h-3.5 w-3.5 animate-spin' />}
-                        {isLoading ? '生成中...' : '生成'}
+                        {isLoading ? '请求已发送...' : '生成'}
                     </Button>
                 </CardFooter>
             </form>
