@@ -486,7 +486,7 @@ export function EditingForm({
                             onChange={(e) => setEditPrompt(e.target.value)}
                             required
                             disabled={isLoading}
-                            className='min-h-[80px] rounded-md border border-border bg-card/50 text-card-foreground placeholder:text-card-foreground/40 focus:border-primary focus:ring-primary'
+                            className='min-h-[80px] h-[150px] rounded-md border border-border bg-card/50 text-card-foreground placeholder:text-card-foreground/40 focus:border-primary focus:ring-primary'
                         />
                     </div>
 

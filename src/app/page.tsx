@@ -108,6 +108,14 @@ export default function HomePage() {
                 if (params.mode === 'edit') {
                     setEditPrompt(params.prompt || '');
                     setEditQuality(params.quality || 'auto');
+                    // 设置图片数量
+                    if (params.n) {
+                        setEditN([params.n]);
+                    }
+                    // 设置图片尺寸
+                    if (params.size) {
+                        setEditSize(params.size);
+                    }
                 } else {
                     // 生成模式参数
                     setGenPrompt(params.prompt || '');
@@ -116,6 +124,14 @@ export default function HomePage() {
                     setGenModeration(params.moderation || 'auto');
                     if (params.output_format) {
                         setGenOutputFormat(params.output_format);
+                    }
+                    // 设置图片数量
+                    if (params.n) {
+                        setGenN([params.n]);
+                    }
+                    // 设置图片尺寸
+                    if (params.size) {
+                        setGenSize(params.size);
                     }
                 }
                 

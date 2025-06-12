@@ -85,7 +85,8 @@ export function FavoriteDetailsDialog({ isOpen, onClose, historyItem }: Favorite
             quality: historyItem.quality,
             background: historyItem.background,
             moderation: historyItem.moderation,
-            output_format: historyItem.output_format
+            output_format: historyItem.output_format,
+            n: historyItem.images.length
         }));
         
         // 关闭对话框并跳转到首页

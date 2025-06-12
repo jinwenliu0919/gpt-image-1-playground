@@ -321,7 +321,7 @@ export function GenerationForm({
                             onChange={(e) => setPrompt(e.target.value)}
                             required
                             disabled={isLoading}
-                            className='min-h-[80px] text-sm rounded-md border border-border bg-card text-card-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring'
+                            className='min-h-[80px] h-[150px] text-sm rounded-md border border-border bg-card text-card-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring'
                         />
                     </div>
 
