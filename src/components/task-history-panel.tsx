@@ -185,7 +185,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <Sparkles size={14} className="text-blue-500" />
                     )}
                     <span className="text-sm font-medium text-card-foreground">
-                        {task.mode === 'edit' ? '编辑图像' : '生成图像'}
+                        {task.mode === 'edit' ? '图生图' : '文生图'}
                     </span>
                 </div>
 
