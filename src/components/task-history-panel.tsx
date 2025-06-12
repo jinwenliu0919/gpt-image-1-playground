@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useHistory } from '@/contexts/HistoryContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent    } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
     Loader2, 
@@ -93,7 +93,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         const isLoading = task.status === 'pending' || task.status === 'processing';
         
         return (
-            <div className="relative bg-card/30 rounded-md border border-border p-3 hover:border-primary/50 transition-colors">
+            <div className="relative bg-card/50 rounded-md p-3 hover:bg-card/70 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className={`flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-card-foreground ${statusClass}`}>
                         <StatusIcon size={12} className={isLoading ? 'animate-spin' : ''} />
@@ -120,7 +120,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <ImageIcon size={24} className="text-muted-foreground opacity-50" />
                     </div>
                 ) : task.status === 'failed' ? (
-                    <div className="w-full aspect-video flex flex-col items-center justify-center bg-red-900/10 rounded border border-red-500/30 p-2">
+                    <div className="w-full aspect-video flex flex-col items-center justify-center bg-red-900/10 rounded p-2">
                         <AlertCircle size={24} className="text-red-500/70 mb-2" />
                         <p className="text-xs text-red-400 text-center line-clamp-2">{task.error || '处理失败'}</p>
                     </div>
@@ -146,9 +146,9 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         const outputFormat = item.output_format || 'png';
 
         return (
-            <div className="relative rounded-md border border-border overflow-hidden bg-card/20 hover:border-primary/50 transition-colors">
+            <div className="relative rounded-md overflow-hidden bg-background/50 hover:bg-background/70 transition-colors shadow-sm">
                 {/* 顶部标题栏 - 显示时间和模式 */}
-                <div className="flex items-center justify-between p-2 border-b border-border bg-card/30">
+                <div className="flex items-center justify-between p-2 bg-card/30">
                     <div className="flex items-center gap-2 text-sm">
                         <Clock size={14} className="text-muted-foreground" />
                         <span className="text-muted-foreground">{formatDate(item.timestamp)}</span>
@@ -181,7 +181,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 </div>
                 
                 {/* 提示词区域 */}
-                <div className="p-2 border-b border-border/50 bg-card/10">
+                <div className="p-2 bg-card/30">
                     <div className="flex items-start gap-2">
                         <MessageSquare size={14} className="text-muted-foreground mt-1 flex-shrink-0" />
                         <p className="text-xs text-muted-foreground line-clamp-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-1">{item.prompt}</p>
@@ -203,15 +203,16 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                                 <button
                                     key={img.filename}
                                     onClick={() => handleImageClick(item, index)}
-                                    className="relative rounded-md overflow-hidden border border-border/50 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary flex-shrink-0"
+                                    className="relative rounded-md overflow-hidden hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-primary flex-shrink-0 bg-card/30"
                                 >
-                                    <div className="w-32 h-32 md:w-40 md:h-40">
+                                    <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
                                         {thumbnailUrl ? (
                                             <Image
                                                 src={thumbnailUrl}
                                                 alt={`图片 ${index + 1}，生成于 ${new Date(item.timestamp).toLocaleString()}`}
-                                                fill
-                                                className="object-cover"
+                                                width={500}
+                                                height={500}
+                                                className="max-w-full max-h-40 w-auto h-auto object-contain"
                                                 unoptimized
                                             />
                                         ) : (
@@ -227,9 +228,9 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 </div>
                 
                 {/* 底部信息区域 */}
-                <div className="flex items-center justify-between p-2 border-t border-border/50 bg-card/10">
+                <div className="flex items-center justify-between p-2 bg-card/30">
                     <div className="flex items-center gap-1">
-                        <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                        <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
                             {originalStorageMode === 'fs' ? (
                                 <HardDrive size={10} className='text-card-foreground/40' />
                             ) : (
@@ -238,7 +239,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                             <span>{originalStorageMode === 'fs' ? 'file' : 'db'}</span>
                         </div>
                         {outputFormat && (
-                            <div className='flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                            <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
                                 <FileImage size={10} className='text-card-foreground/40' />
                                 <span>{outputFormat.toUpperCase()}</span>
                             </div>
@@ -257,12 +258,12 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
     return (
         <>
             <Card className="w-full h-full flex flex-col overflow-hidden">
-                <CardHeader className="px-4 py-3 border-b border-border flex-shrink-0">
+                {/* <CardHeader className="px-4 py-3 border-b border-border flex-shrink-0">
                     <CardTitle className="text-lg font-medium">生成历史</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                </CardHeader> */}
+                <CardContent className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     {combinedItems.length === 0 ? (
-                        <div className="flex h-full items-center justify-center text-muted-foreground">
+                        <div className="flex h-full items-center justify-center text-muted-foreground bg-background/50">
                             <p>生成的图像将显示在这里</p>
                         </div>
                     ) : (
