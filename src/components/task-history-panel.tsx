@@ -2,22 +2,24 @@
 
 import * as React from 'react';
 import { useHistory } from '@/contexts/HistoryContext';
-import { Card, CardContent    } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-    Loader2, 
-    Sparkles, 
-    Pencil, 
-    AlertCircle, 
-    CheckCircle, 
-    Layers, 
-    HardDrive, 
-    Database, 
+import {
+    Loader2,
+    Sparkles,
+    Pencil,
+    AlertCircle,
+    CheckCircle,
+    Layers,
+    HardDrive,
+    Database,
     FileImage,
     Image as ImageIcon,
     Clock,
     MessageSquare,
-    Trash2
+    Trash2,
+    Copy,
+    Check
 } from 'lucide-react';
 import Image from 'next/image';
 import type { TaskRecord, HistoryMetadata } from '@/lib/types';
@@ -40,11 +42,11 @@ const formatDate = (timestamp: number): string => {
 };
 
 export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
-    const { 
-        tasks, 
-        history, 
-        getImageSrc, 
-        handleDeleteHistoryItem, 
+    const {
+        tasks,
+        history,
+        getImageSrc,
+        handleDeleteHistoryItem,
         itemToDeleteConfirm,
         confirmDeletion,
         cancelDeletion,
@@ -55,29 +57,32 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         confirmTaskDeletion,
         cancelTaskDeletion
     } = useHistory();
-    
+
     // 添加图片预览状态
     const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
     const [selectedHistoryItem, setSelectedHistoryItem] = React.useState<HistoryMetadata | null>(null);
     const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+
+    // 添加复制提示词状态
+    const [copiedItemId, setCopiedItemId] = React.useState<string | null>(null);
 
     // 合并任务和历史记录数据，按时间排序
     const combinedItems = React.useMemo(() => {
         // 只保留未完成的任务（pending, processing 或 failed 状态）
         const taskItems = tasks
             .filter(task => task.status !== 'completed')
-            .map(task => ({ 
-                type: 'task' as const, 
-                data: task, 
-                timestamp: task.timestamp 
+            .map(task => ({
+                type: 'task' as const,
+                data: task,
+                timestamp: task.timestamp
             }));
-        
-        const historyItems = history.map(item => ({ 
-            type: 'history' as const, 
-            data: item, 
-            timestamp: item.timestamp 
+
+        const historyItems = history.map(item => ({
+            type: 'history' as const,
+            data: item,
+            timestamp: item.timestamp
         }));
-        
+
         return [...taskItems, ...historyItems]
             .sort((a, b) => b.timestamp - a.timestamp);
     }, [tasks, history]);
@@ -89,12 +94,24 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         setPreviewDialogOpen(true);
     };
 
+    // 处理复制提示词
+    const handleCopyPrompt = async (prompt: string | undefined, itemId: string) => {
+        if (!prompt) return;
+        try {
+            await navigator.clipboard.writeText(prompt);
+            setCopiedItemId(itemId);
+            setTimeout(() => setCopiedItemId(null), 1500);
+        } catch (err) {
+            console.error('复制提示词失败: ', err);
+        }
+    };
+
     const renderTaskItem = (task: TaskRecord) => {
         // 获取任务状态图标
         let StatusIcon = Loader2;
         let statusText = '等待中';
         let statusClass = 'bg-yellow-600/80';
-        
+
         if (task.status === 'processing') {
             statusText = '处理中';
             statusClass = 'bg-blue-600/80';
@@ -107,10 +124,13 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
             statusText = '失败';
             statusClass = 'bg-red-600/80';
         }
-        
+
         // 添加任务旋转动画
         const isLoading = task.status === 'pending' || task.status === 'processing';
-        
+
+        // 为任务生成唯一ID
+        const taskItemId = `task-${task.id}`;
+
         return (
             <div className="relative bg-card/50 rounded-md p-3 hover:bg-card/70 transition-colors shadow-sm">
                 <div className="flex items-center justify-between mb-2">
@@ -120,7 +140,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="text-xs text-muted-foreground">{formatDate(task.timestamp)}</div>
-                        <Button 
+                        <Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
@@ -133,7 +153,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         </Button>
                     </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2 mb-2">
                     {task.mode === 'edit' ? (
                         <Pencil size={14} className="text-orange-500" />
@@ -144,9 +164,9 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         {task.mode === 'edit' ? '编辑图像' : '生成图像'}
                     </span>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{task.prompt}</p>
-                
+
                 {task.status === 'pending' || task.status === 'processing' ? (
                     <div className="flex items-center justify-center bg-background/50 rounded">
                         <div className="flex h-20 w-20 items-center justify-center">
@@ -161,16 +181,36 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         </div>
                     </div>
                 ) : null}
-                
-                <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="mt-2 w-full text-xs"
-                    onClick={() => onSelectTask(task.id)}
-                    disabled={task.status === 'pending' || task.status === 'processing'}
-                >
-                    {task.status === 'completed' ? '查看结果' : task.status === 'failed' ? '查看详情' : '等待中...'}
-                </Button>
+
+                <div className="flex items-center gap-2 mt-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-grow text-xs"
+                        onClick={() => onSelectTask(task.id)}
+                        disabled={task.status === 'pending' || task.status === 'processing'}
+                    >
+                        {task.status === 'completed' ? '查看结果' : task.status === 'failed' ? '查看详情' : '等待中...'}
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 flex-shrink-0"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyPrompt(task.prompt, taskItemId);
+                        }}
+                        title="复制提示词"
+                        disabled={!task.prompt}
+                    >
+                        {copiedItemId === taskItemId ? (
+                            <Check size={14} className="text-green-500" />
+                        ) : (
+                            <Copy size={14} className="text-muted-foreground hover:text-primary" />
+                        )}
+                    </Button>
+                </div>
             </div>
         );
     };
@@ -180,6 +220,9 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         const imageCount = images.length;
         const originalStorageMode = item.storageModeUsed || 'fs';
         const outputFormat = item.output_format || 'png';
+
+        // 为每个历史记录项生成唯一ID
+        const itemId = `history-${item.timestamp}`;
 
         return (
             <div className="relative rounded-md overflow-hidden bg-background/50 hover:bg-background/70 transition-colors shadow-sm">
@@ -201,8 +244,8 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                             )}
                             {item.mode === 'edit' ? '编辑' : '创建'}
                         </div> */}
-                        
-                        <Button 
+
+                        <Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
@@ -215,7 +258,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         </Button>
                     </div>
                 </div>
-                
+
                 {/* 提示词区域 */}
                 <div className="p-2 bg-card/30">
                     <div className="flex items-center gap-2">
@@ -223,7 +266,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <p className="text-xs text-muted-foreground line-clamp-2 overflow-hidden break-words pb-1">{'提示词：'}{item.prompt}</p>
                     </div>
                 </div>
-                
+
                 {/* 图片网格区域 - 使用水平滚动 */}
                 <div className="p-2 overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     <div className="flex gap-2" style={{ minWidth: 'min-content' }}>
@@ -234,7 +277,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                             } else {
                                 thumbnailUrl = `/api/image/${img.filename}`;
                             }
-                            
+
                             return (
                                 <button
                                     key={img.filename}
@@ -263,7 +306,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         })}
                     </div>
                 </div>
-                
+
                 {/* 底部信息区域 */}
                 <div className="flex items-center justify-between p-2 bg-card/30">
                     <div className="flex items-center gap-1">
@@ -281,11 +324,39 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                                 <span>{outputFormat.toUpperCase()}</span>
                             </div>
                         )}
+                        <div className='flex items-center gap-1'>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-full"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopyPrompt(item.prompt, itemId);
+                                }}
+                                title="复制提示词"
+                            >
+                                {copiedItemId === itemId ? (
+                                    <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                        <Check size={10} className="text-green-500" />
+                                        <span>已复制</span>
+                                    </div>
+                                ) : (
+                                    <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                        <Copy size={10} className='text-card-foreground/40' />
+                                        <span>复制提示词</span>
+                                    </div>
+                                )}
+                            </Button>
+                        </div>
                     </div>
-                    
-                    <div className="flex items-center gap-1">
-                        <Layers size={14} className="text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{imageCount} 张图片</span>
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                            <Layers size={14} className="text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{imageCount} 张图片</span>
+                        </div>
+
+
                     </div>
                 </div>
             </div>
@@ -304,8 +375,8 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <div className="flex flex-col gap-2">
                             {combinedItems.map((item) => (
                                 <div key={`${item.type}-${item.timestamp}`}>
-                                    {item.type === 'task' 
-                                        ? renderTaskItem(item.data) 
+                                    {item.type === 'task'
+                                        ? renderTaskItem(item.data)
                                         : renderHistoryItem(item.data)}
                                 </div>
                             ))}
@@ -313,16 +384,16 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                     )}
                 </CardContent>
             </Card>
-            
+
             {/* 图片预览对话框 */}
-            <ImagePreviewDialog 
+            <ImagePreviewDialog
                 isOpen={previewDialogOpen}
                 onClose={() => setPreviewDialogOpen(false)}
                 historyItem={selectedHistoryItem}
                 selectedImageIndex={selectedImageIndex}
                 getImageSrc={getImageSrc}
             />
-            
+
             {/* 删除确认对话框 */}
             <DeleteConfirmationDialog
                 isOpen={!!itemToDeleteConfirm}
@@ -332,7 +403,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 skipConfirmation={dialogCheckboxStateSkipConfirm}
                 setSkipConfirmation={setDialogCheckboxStateSkipConfirm}
             />
-            
+
             {/* 任务删除确认对话框 */}
             <DeleteTaskConfirmationDialog
                 isOpen={!!itemToDeleteTaskConfirm}
