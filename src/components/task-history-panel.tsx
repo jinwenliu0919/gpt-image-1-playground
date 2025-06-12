@@ -205,18 +205,19 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                                     onClick={() => handleImageClick(item, index)}
                                     className="relative rounded-md overflow-hidden hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-primary flex-shrink-0 bg-card/30"
                                 >
-                                    <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center">
+                                    <div className="flex items-center justify-center">
                                         {thumbnailUrl ? (
                                             <Image
                                                 src={thumbnailUrl}
                                                 alt={`图片 ${index + 1}，生成于 ${new Date(item.timestamp).toLocaleString()}`}
                                                 width={500}
                                                 height={500}
-                                                className="max-w-full max-h-40 w-auto h-auto object-contain"
+                                                className="w-auto h-auto object-contain"
+                                                style={{ maxHeight: '160px', maxWidth: '160px' }}
                                                 unoptimized
                                             />
                                         ) : (
-                                            <div className="flex h-full w-full items-center justify-center bg-card/10 text-card-foreground">
+                                            <div className="flex h-20 w-20 items-center justify-center bg-card/10 text-card-foreground">
                                                 <ImageIcon size={24} className="text-muted-foreground opacity-50" />
                                             </div>
                                         )}
