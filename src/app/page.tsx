@@ -65,7 +65,7 @@ export default function HomePage() {
     const [editImageFiles, setEditImageFiles] = React.useState<File[]>([]);
     const [editSourceImagePreviewUrls, setEditSourceImagePreviewUrls] = React.useState<string[]>([]);
     const [editPrompt, setEditPrompt] = React.useState('');
-    const [editN, setEditN] = React.useState([1]);
+    const [editN, setEditN] = React.useState([4]);
     const [editSize, setEditSize] = React.useState<EditingFormData['size']>('auto');
     const [editQuality, setEditQuality] = React.useState<EditingFormData['quality']>('auto');
     const [editBrushSize, setEditBrushSize] = React.useState([20]);
@@ -347,6 +347,26 @@ export default function HomePage() {
                 }
 
                 await completeTaskWithImages(taskId, newHistoryEntry);
+                
+                // 成功生成图片后重置表单
+                if (mode === 'generate') {
+                    // 重置生成表单
+                    setGenPrompt('');
+                    setGenN([1]);
+                    setGenReferenceImages([]);
+                    setGenReferenceImage(null);
+                } else if (mode === 'edit') {
+                    // 重置编辑表单
+                    setEditPrompt('');
+                    setEditN([4]);
+                    setEditImageFiles([]);
+                    setEditSourceImagePreviewUrls([]);
+                    setEditGeneratedMaskFile(null);
+                    setEditMaskPreviewUrl(null);
+                    setEditDrawnPoints([]);
+                    setEditIsMaskSaved(false);
+                    setEditShowMaskEditor(false);
+                }
             } else {
                 throw new Error('API response did not contain valid image data or filenames.');
             }

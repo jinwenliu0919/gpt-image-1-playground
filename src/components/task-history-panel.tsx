@@ -220,7 +220,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 <div className="p-2 bg-card/30">
                     <div className="flex items-center gap-2">
                         <MessageSquare size={14} className="text-muted-foreground flex-shrink-0" />
-                        <p className="text-xs text-muted-foreground line-clamp-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-1">{'提示词：'}{item.prompt}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 overflow-hidden break-words pb-1">{'提示词：'}{item.prompt}</p>
                     </div>
                 </div>
                 
