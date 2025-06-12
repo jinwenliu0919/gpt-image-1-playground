@@ -322,6 +322,27 @@ export default function HomePage() {
         try {
             await updateTaskStatus(taskId, 'processing');
             
+            // 发送请求后立即重置表单，不等待响应
+            if (mode === 'generate') {
+                // 重置生成表单
+                setGenPrompt('');
+                setGenN([1]);
+                setGenReferenceImages([]);
+                setGenReferenceImage(null);
+            } else if (mode === 'edit') {
+                // 重置编辑表单
+                setEditPrompt('');
+                setEditN([4]);
+                setEditImageFiles([]);
+                setEditSourceImagePreviewUrls([]);
+                setEditGeneratedMaskFile(null);
+                setEditMaskPreviewUrl(null);
+                setEditDrawnPoints([]);
+                setEditIsMaskSaved(false);
+                setEditShowMaskEditor(false);
+                setEditOriginalImageSize(null);
+            }
+            
             const response = await fetch('/api/images', {
                 method: 'POST',
                 body: apiFormData
@@ -399,26 +420,6 @@ export default function HomePage() {
                 }
 
                 await completeTaskWithImages(taskId, newHistoryEntry);
-                
-                // 成功生成图片后重置表单
-                if (mode === 'generate') {
-                    // 重置生成表单
-                    setGenPrompt('');
-                    setGenN([1]);
-                    setGenReferenceImages([]);
-                    setGenReferenceImage(null);
-                } else if (mode === 'edit') {
-                    // 重置编辑表单
-                    setEditPrompt('');
-                    setEditN([4]);
-                    setEditImageFiles([]);
-                    setEditSourceImagePreviewUrls([]);
-                    setEditGeneratedMaskFile(null);
-                    setEditMaskPreviewUrl(null);
-                    setEditDrawnPoints([]);
-                    setEditIsMaskSaved(false);
-                    setEditShowMaskEditor(false);
-                }
             } else {
                 throw new Error('API response did not contain valid image data or filenames.');
             }
