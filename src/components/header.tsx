@@ -16,14 +16,14 @@ export function Header() {
                             href='/'
                             className='px-6 py-2.5 transition-colors hover:bg-primary/10 hover:text-primary text-foreground font-medium'
                         >
-                            生成
+                            画图
                         </Link>
-                        <Link
+                        {/* <Link
                             href='/history'
                             className='px-6 py-2.5 transition-colors hover:bg-primary/10 hover:text-primary text-foreground/60 font-medium'
                         >
                             历史
-                        </Link>
+                        </Link> */}
                         <Link
                             href='/favorites'
                             className='px-6 py-2.5 transition-colors hover:bg-primary/10 hover:text-primary text-foreground/60 font-medium'
