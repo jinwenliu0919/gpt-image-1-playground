@@ -48,6 +48,10 @@ type HistoryContextType = {
     createTask: (params: Omit<TaskRecord, 'id' | 'timestamp' | 'status'>) => string;
     updateTaskStatus: (id: string, status: TaskStatus, error?: string) => void;
     completeTaskWithImages: (taskId: string, historyEntry: HistoryMetadata) => void;
+    handleDeleteTask: (task: TaskRecord) => void;
+    itemToDeleteTaskConfirm: TaskRecord | null;
+    confirmTaskDeletion: () => void;
+    cancelTaskDeletion: () => void;
 };
 
 const HistoryContext = React.createContext<HistoryContextType | undefined>(undefined);
@@ -58,6 +62,7 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
     const [blobUrlCache, setBlobUrlCache] = React.useState<Record<string, string>>({});
     const [skipDeleteConfirmation, setSkipDeleteConfirmation] = React.useState<boolean>(false);
     const [itemToDeleteConfirm, setItemToDeleteConfirm] = React.useState<HistoryMetadata | null>(null);
+    const [itemToDeleteTaskConfirm, setItemToDeleteTaskConfirm] = React.useState<TaskRecord | null>(null);
     const [dialogCheckboxStateSkipConfirm, setDialogCheckboxStateSkipConfirm] = React.useState<boolean>(false);
     const [isPasswordRequiredByBackend, setIsPasswordRequiredByBackend] = React.useState<boolean | null>(null);
     const [clientPasswordHash, setClientPasswordHash] = React.useState<string | null>(null);
@@ -336,6 +341,42 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    // 删除任务的函数
+    const executeDeleteTask = async (task: TaskRecord) => {
+        if (!task) return;
+        setError(null);
+
+        try {
+            // 从数据库中删除任务
+            await db.tasks.delete(task.id);
+            console.log(`Task ${task.id} deleted successfully`);
+        } catch (e) {
+            console.error('Failed to delete task:', e);
+            setError(e instanceof Error ? e.message : 'An unexpected error occurred during task deletion.');
+        } finally {
+            setItemToDeleteTaskConfirm(null);
+        }
+    };
+
+    const handleDeleteTask = (task: TaskRecord) => {
+        if (skipDeleteConfirmation) {
+            executeDeleteTask(task);
+        } else {
+            setItemToDeleteTaskConfirm(task);
+        }
+    };
+
+    const handleConfirmTaskDeletion = () => {
+        if (itemToDeleteTaskConfirm) {
+            executeDeleteTask(itemToDeleteTaskConfirm);
+            setSkipDeleteConfirmation(dialogCheckboxStateSkipConfirm);
+        }
+    };
+
+    const handleCancelTaskDeletion = () => {
+        setItemToDeleteTaskConfirm(null);
+    };
+
     const value = {
         history,
         tasks,
@@ -358,7 +399,11 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         setError,
         createTask,
         updateTaskStatus,
-        completeTaskWithImages
+        completeTaskWithImages,
+        handleDeleteTask,
+        itemToDeleteTaskConfirm,
+        confirmTaskDeletion: handleConfirmTaskDeletion,
+        cancelTaskDeletion: handleCancelTaskDeletion
     };
 
     return <HistoryContext.Provider value={value}>{children}</HistoryContext.Provider>;

@@ -20,10 +20,10 @@ import {
     Trash2
 } from 'lucide-react';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
 import type { TaskRecord, HistoryMetadata } from '@/lib/types';
 import { ImagePreviewDialog } from '@/components/image-preview-dialog';
 import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
+import { DeleteTaskConfirmationDialog } from '@/components/delete-task-confirmation-dialog';
 
 interface TaskHistoryPanelProps {
     onSelectTask: (taskId: string) => void;
@@ -49,7 +49,11 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         confirmDeletion,
         cancelDeletion,
         dialogCheckboxStateSkipConfirm,
-        setDialogCheckboxStateSkipConfirm
+        setDialogCheckboxStateSkipConfirm,
+        handleDeleteTask,
+        itemToDeleteTaskConfirm,
+        confirmTaskDeletion,
+        cancelTaskDeletion
     } = useHistory();
     
     // 添加图片预览状态
@@ -114,7 +118,20 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <StatusIcon size={12} className={isLoading ? 'animate-spin' : ''} />
                         <span>{statusText}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">{formatDate(task.timestamp)}</div>
+                    <div className="flex items-center gap-2">
+                        <div className="text-xs text-muted-foreground">{formatDate(task.timestamp)}</div>
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteTask(task);
+                            }}
+                        >
+                            <Trash2 size={14} className="text-muted-foreground hover:text-red-400" />
+                        </Button>
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-2 mb-2">
@@ -173,7 +190,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                         <span className="text-muted-foreground">{formatDate(item.timestamp)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className={cn(
+                        {/* <div className={cn(
                             'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-card-foreground',
                             item.mode === 'edit' ? 'bg-orange-600/80' : 'bg-blue-600/80'
                         )}>
@@ -183,7 +200,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                                 <Sparkles size={12} />
                             )}
                             {item.mode === 'edit' ? '编辑' : '创建'}
-                        </div>
+                        </div> */}
                         
                         <Button 
                             variant="ghost"
@@ -201,9 +218,9 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 
                 {/* 提示词区域 */}
                 <div className="p-2 bg-card/30">
-                    <div className="flex items-start gap-2">
-                        <MessageSquare size={14} className="text-muted-foreground mt-1 flex-shrink-0" />
-                        <p className="text-xs text-muted-foreground line-clamp-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-1">{item.prompt}</p>
+                    <div className="flex items-center gap-2">
+                        <MessageSquare size={14} className="text-muted-foreground flex-shrink-0" />
+                        <p className="text-xs text-muted-foreground line-clamp-2 overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent pb-1">{'提示词：'}{item.prompt}</p>
                     </div>
                 </div>
                 
@@ -278,9 +295,6 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
     return (
         <>
             <Card className="w-full h-full flex flex-col overflow-hidden">
-                {/* <CardHeader className="px-4 py-3 border-b border-border flex-shrink-0">
-                    <CardTitle className="text-lg font-medium">生成历史</CardTitle>
-                </CardHeader> */}
                 <CardContent className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     {combinedItems.length === 0 ? (
                         <div className="flex h-full items-center justify-center text-muted-foreground bg-background/50">
@@ -315,6 +329,16 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 onClose={cancelDeletion}
                 onConfirm={confirmDeletion}
                 item={itemToDeleteConfirm}
+                skipConfirmation={dialogCheckboxStateSkipConfirm}
+                setSkipConfirmation={setDialogCheckboxStateSkipConfirm}
+            />
+            
+            {/* 任务删除确认对话框 */}
+            <DeleteTaskConfirmationDialog
+                isOpen={!!itemToDeleteTaskConfirm}
+                onClose={cancelTaskDeletion}
+                onConfirm={confirmTaskDeletion}
+                task={itemToDeleteTaskConfirm}
                 skipConfirmation={dialogCheckboxStateSkipConfirm}
                 setSkipConfirmation={setDialogCheckboxStateSkipConfirm}
             />
