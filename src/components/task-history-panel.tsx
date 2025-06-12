@@ -23,6 +23,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import type { TaskRecord, HistoryMetadata } from '@/lib/types';
 import { ImagePreviewDialog } from '@/components/image-preview-dialog';
+import { DeleteConfirmationDialog } from '@/components/delete-confirmation-dialog';
 
 interface TaskHistoryPanelProps {
     onSelectTask: (taskId: string) => void;
@@ -39,7 +40,18 @@ const formatDate = (timestamp: number): string => {
 };
 
 export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
-    const { tasks, history, getImageSrc, handleDeleteHistoryItem } = useHistory();
+    const { 
+        tasks, 
+        history, 
+        getImageSrc, 
+        handleDeleteHistoryItem, 
+        itemToDeleteConfirm,
+        confirmDeletion,
+        cancelDeletion,
+        dialogCheckboxStateSkipConfirm,
+        setDialogCheckboxStateSkipConfirm
+    } = useHistory();
+    
     // 添加图片预览状态
     const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
     const [selectedHistoryItem, setSelectedHistoryItem] = React.useState<HistoryMetadata | null>(null);
@@ -47,11 +59,14 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
 
     // 合并任务和历史记录数据，按时间排序
     const combinedItems = React.useMemo(() => {
-        const taskItems = tasks.map(task => ({ 
-            type: 'task' as const, 
-            data: task, 
-            timestamp: task.timestamp 
-        }));
+        // 只保留未完成的任务（pending, processing 或 failed 状态）
+        const taskItems = tasks
+            .filter(task => task.status !== 'completed')
+            .map(task => ({ 
+                type: 'task' as const, 
+                data: task, 
+                timestamp: task.timestamp 
+            }));
         
         const historyItems = history.map(item => ({ 
             type: 'history' as const, 
@@ -116,13 +131,17 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{task.prompt}</p>
                 
                 {task.status === 'pending' || task.status === 'processing' ? (
-                    <div className="w-full aspect-video flex items-center justify-center bg-background/50 rounded">
-                        <ImageIcon size={24} className="text-muted-foreground opacity-50" />
+                    <div className="flex items-center justify-center bg-background/50 rounded">
+                        <div className="flex h-20 w-20 items-center justify-center">
+                            <ImageIcon size={24} className="text-muted-foreground opacity-50" />
+                        </div>
                     </div>
                 ) : task.status === 'failed' ? (
-                    <div className="w-full aspect-video flex flex-col items-center justify-center bg-red-900/10 rounded p-2">
-                        <AlertCircle size={24} className="text-red-500/70 mb-2" />
-                        <p className="text-xs text-red-400 text-center line-clamp-2">{task.error || '处理失败'}</p>
+                    <div className="flex items-center justify-center bg-red-900/10 rounded">
+                        <div className="flex h-20 w-20 flex-col items-center justify-center p-2">
+                            <AlertCircle size={24} className="text-red-500/70 mb-2" />
+                            <p className="text-xs text-red-400 text-center line-clamp-2">{task.error || '处理失败'}</p>
+                        </div>
                     </div>
                 ) : null}
                 
@@ -268,7 +287,7 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                             <p>生成的图像将显示在这里</p>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
                             {combinedItems.map((item) => (
                                 <div key={`${item.type}-${item.timestamp}`}>
                                     {item.type === 'task' 
@@ -288,6 +307,16 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                 historyItem={selectedHistoryItem}
                 selectedImageIndex={selectedImageIndex}
                 getImageSrc={getImageSrc}
+            />
+            
+            {/* 删除确认对话框 */}
+            <DeleteConfirmationDialog
+                isOpen={!!itemToDeleteConfirm}
+                onClose={cancelDeletion}
+                onConfirm={confirmDeletion}
+                item={itemToDeleteConfirm}
+                skipConfirmation={dialogCheckboxStateSkipConfirm}
+                setSkipConfirmation={setDialogCheckboxStateSkipConfirm}
             />
         </>
     );
