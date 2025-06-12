@@ -81,7 +81,7 @@ export default function HomePage() {
     const [genPrompt, setGenPrompt] = React.useState('');
     const [genN, setGenN] = React.useState([1]);
     const [genSize, setGenSize] = React.useState<GenerationFormData['size']>('auto');
-    const [genAspectRatio, setGenAspectRatio] = React.useState<'1:1' | '16:9' | '4:3' | '3:2' | '3:4' | '2:3' | '9:16' | 'custom'>('1:1');
+    const [genAspectRatio, setGenAspectRatio] = React.useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | 'custom'>('1:1');
     const [genWidth, setGenWidth] = React.useState(1024);
     const [genHeight, setGenHeight] = React.useState(1024);
     const [genQuality, setGenQuality] = React.useState<GenerationFormData['quality']>('auto');

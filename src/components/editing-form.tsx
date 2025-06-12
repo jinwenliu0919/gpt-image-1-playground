@@ -40,7 +40,7 @@ type DrawnPoint = {
 export type EditingFormData = {
     prompt: string;
     n: number;
-    size: '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
+    size: '1024x1024' | '1536x1024' | '1024x1536' | '1920x1080' | '1080x1920' | '1024x768' | '768x1024' | 'auto';
     quality: 'low' | 'medium' | 'high' | 'auto';
     imageFiles: File[];
     maskFile: File | null;
@@ -756,7 +756,7 @@ export function EditingForm({
                         disabled={isLoading || !editPrompt || imageFiles.length === 0 || (editShowMaskEditor && !editIsMaskSaved)}
                         className='flex w-full items-center justify-center gap-2 rounded-md bg-primary text-sm text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground'>
                         {isLoading && <Loader2 className='h-3.5 w-3.5 animate-spin' />}
-                        {isLoading ? '请求已发送...' : '编辑'}
+                        {isLoading ? '请求已发送...' : '生成'}
                     </Button>
                 </CardFooter>
             </form>

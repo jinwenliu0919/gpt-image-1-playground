@@ -26,17 +26,15 @@ import {
     LockOpen,
     Link,
     Unlink,
-    Upload,
-    X
 } from 'lucide-react';
 import * as React from 'react';
 
-export type AspectRatio = '1:1' | '16:9' | '4:3' | '3:2' | '3:4' | '2:3' | '9:16' | 'custom';
+export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | 'custom';
 
 export type GenerationFormData = {
     prompt: string;
     n: number;
-    size: '1024x1024' | '1536x1024' | '1024x1536' | 'auto';
+    size: '1024x1024' | '1536x1024' | '1024x1536' | '1920x1080' | '1080x1920' | '1024x768' | '768x1024' | 'auto';
     aspectRatio: AspectRatio;
     width?: number;
     height?: number;
@@ -139,7 +137,7 @@ export function GenerationForm({
     moderation,
     setModeration,
     referenceImage,
-    setReferenceImage,
+    //setReferenceImage,
     referenceImages,
     setReferenceImages
 }: GenerationFormProps) {
@@ -147,7 +145,7 @@ export function GenerationForm({
     const [isCustomSize, setIsCustomSize] = React.useState(aspectRatio === 'custom');
     const [maintainAspectRatio, setMaintainAspectRatio] = React.useState(true);
     const [referenceImagePreviews, setReferenceImagePreviews] = React.useState<string[]>([]);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    //const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     React.useEffect(() => {
         setIsCustomSize(aspectRatio === 'custom');
@@ -199,21 +197,41 @@ export function GenerationForm({
             const [widthRatio, heightRatio] = aspectRatio.split(':').map(Number);
             if (widthRatio && heightRatio) {
                 // 根据比例选择最接近的支持尺寸
-                if (widthRatio > heightRatio) {
-                    // 横向，使用 1536x1024
-                    setWidth(1536);
-                    setHeight(1024);
-                    setSize('1536x1024');
-                } else if (widthRatio < heightRatio) {
-                    // 纵向，使用 1024x1536
-                    setWidth(1024);
-                    setHeight(1536);
-                    setSize('1024x1536');
-                } else {
+                if (widthRatio === heightRatio) {
                     // 正方形，使用 1024x1024
                     setWidth(1024);
                     setHeight(1024);
                     setSize('1024x1024');
+                } else if (widthRatio === 3 && heightRatio === 2) {
+                    // 横向 3:2，使用 1536x1024
+                    setWidth(1536);
+                    setHeight(1024);
+                    setSize('1536x1024');
+                } else if (widthRatio === 2 && heightRatio === 3) {
+                    // 纵向 2:3，使用 1024x1536
+                    setWidth(1024);
+                    setHeight(1536);
+                    setSize('1024x1536');
+                } else if (widthRatio === 4 && heightRatio === 3) {
+                    // 横向 4:3，使用 1024x768
+                    setWidth(1024);
+                    setHeight(768);
+                    setSize('1024x768');
+                } else if (widthRatio === 3 && heightRatio === 4) {
+                    // 纵向 3:4，使用 768x1024
+                    setWidth(768);
+                    setHeight(1024);
+                    setSize('768x1024');
+                } else if (widthRatio === 16 && heightRatio === 9) {
+                    // 横向 16:9，使用 1920x1080
+                    setWidth(1920);
+                    setHeight(1080);
+                    setSize('1920x1080');
+                } else if (widthRatio === 9 && heightRatio === 16) {
+                    // 纵向 9:16，使用 1080x1920
+                    setWidth(1080);
+                    setHeight(1920);
+                    setSize('1080x1920');
                 }
             }
         }
@@ -235,31 +253,6 @@ export function GenerationForm({
         
         // 自定义尺寸时，使用auto
         setSize('auto');
-    };
-
-    const handleReferenceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            setReferenceImages(prev => [...prev, ...newFiles]);
-            
-            // 为了兼容性，同时设置单张图片状态
-            if (referenceImages.length === 0 && newFiles.length > 0) {
-                setReferenceImage(newFiles[0]);
-            }
-        }
-    };
-
-    const handleRemoveReferenceImage = (indexToRemove: number) => {
-        setReferenceImages(prev => prev.filter((_, index) => index !== indexToRemove));
-        
-        // 如果删除后没有图片，同时更新单张图片状态
-        if (referenceImages.length <= 1) {
-            setReferenceImage(null);
-        }
-        
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-        }
     };
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -332,55 +325,6 @@ export function GenerationForm({
                         />
                     </div>
 
-                    <div className='space-y-2'>
-                        <Label className='block text-sm text-card-foreground'>参考图片</Label>
-                        <Label
-                            htmlFor='reference-image'
-                            className='flex w-full cursor-pointer items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm transition-colors hover:bg-card/5'>
-                            <span className='truncate pr-2 text-card-foreground/60'>
-                                {referenceImages.length > 0 
-                                    ? `已选择 ${referenceImages.length} 张图片` 
-                                    : '未选择图片'}
-                            </span>
-                            <span className='flex shrink-0 items-center gap-1.5 rounded-md bg-card/10 px-3 py-1 text-xs font-medium text-card-foreground/80 hover:bg-card/20'>
-                                <Upload className='h-3 w-3' /> 浏览...
-                            </span>
-                        </Label>
-                        <input
-                            type='file'
-                            id='reference-image'
-                            ref={fileInputRef}
-                            onChange={handleReferenceImageUpload}
-                            accept='image/png, image/jpeg, image/webp'
-                            className='sr-only'
-                            multiple
-                            disabled={isLoading}
-                        />
-                        {referenceImagePreviews.length > 0 && (
-                            <div className='flex flex-wrap gap-2 mt-2 overflow-y-auto max-h-40 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
-                                {referenceImagePreviews.map((preview, index) => (
-                                    <div key={index} className='relative w-16 h-16 rounded-md overflow-hidden border border-border'>
-                                        <img
-                                            src={preview}
-                                            alt={`参考图片预览 ${index + 1}`}
-                                            className='object-cover w-full h-full'
-                                        />
-                                        <Button
-                                            type='button'
-                                            variant='destructive'
-                                            size='icon'
-                                            className='absolute top-0 right-0 h-5 w-5 rounded-full bg-destructive p-0.5 text-destructive-foreground hover:bg-destructive/90'
-                                            onClick={() => handleRemoveReferenceImage(index)}
-                                            disabled={isLoading}
-                                            aria-label={`移除参考图片 ${index + 1}`}>
-                                            <X className='h-3 w-3' />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
                     <div className='space-y-1.5'>
                         <Label htmlFor='n-slider' className='text-sm text-card-foreground'>
                             图像数量: {n[0]}
@@ -404,10 +348,12 @@ export function GenerationForm({
                             onValueChange={(value) => setAspectRatio(value as AspectRatio)}
                             disabled={isLoading}
                             className='flex flex-wrap gap-x-4 gap-y-2'>
-                            <RadioItemWithIcon value='1:1' id='ratio-1-1' label='1:1 (1024x1024)' Icon={Square} />
-                            <RadioItemWithIcon value='3:2' id='ratio-3-2' label='3:2 (1536x1024)' Icon={RectangleHorizontal} />
-                            <RadioItemWithIcon value='2:3' id='ratio-2-3' label='2:3 (1024x1536)' Icon={RectangleVertical} />
-                            <RadioItemWithIcon value='custom' id='ratio-custom' label='自定义 (auto)' Icon={Sparkles} />
+                            <RadioItemWithIcon value='1:1' id='ratio-1-1' label='1:1' Icon={Square} />
+                            <RadioItemWithIcon value='3:2' id='ratio-3-2' label='3:2' Icon={RectangleHorizontal} />
+                            <RadioItemWithIcon value='2:3' id='ratio-2-3' label='2:3' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='4:3' id='ratio-4-3' label='4:3' Icon={RectangleHorizontal} />
+                            <RadioItemWithIcon value='3:4' id='ratio-3-4' label='3:4' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='custom' id='ratio-custom' label='自定义' Icon={Sparkles} />
                         </RadioGroup>
                     </div>
 
