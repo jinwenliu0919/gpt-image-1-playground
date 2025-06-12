@@ -2,7 +2,7 @@
 
 import { ModeToggle } from '@/components/mode-toggle';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
@@ -290,7 +290,7 @@ export function GenerationForm({
             <CardHeader className='flex items-start justify-between border-b border-border pb-2'>
                 <div>
                     <div className='flex items-center'>
-                        <CardTitle className='py-1 text-base font-medium text-card-foreground'>生成图像</CardTitle>
+                        <CardTitle className='py-1 text-xl font-medium text-card-foreground'>文生图</CardTitle>
                         {isPasswordRequiredByBackend && (
                             <Button
                                 variant='ghost'
@@ -302,14 +302,14 @@ export function GenerationForm({
                             </Button>
                         )}
                     </div>
-                    <CardDescription className='mt-1 text-xs text-muted-foreground'>
+                    {/* <CardDescription className='mt-1 text-sm text-muted-foreground'>
                         使用 gpt-image-1 从文本提示创建新图像。
-                    </CardDescription>
+                    </CardDescription> */}
                 </div>
                 <ModeToggle currentMode={currentMode} onModeChange={onModeChange} />
             </CardHeader>
             <form onSubmit={handleSubmit} className='flex h-full flex-1 flex-col overflow-hidden'>
-                <CardContent className='flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
+                <CardContent className='flex-1 space-y-4 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
                     <div className='space-y-1'>
                         <Label htmlFor='prompt' className='text-sm text-card-foreground'>
                             提示词
@@ -347,7 +347,7 @@ export function GenerationForm({
                             value={aspectRatio}
                             onValueChange={(value) => setAspectRatio(value as AspectRatio)}
                             disabled={isLoading}
-                            className='flex flex-wrap gap-x-4 gap-y-2'>
+                            className='flex flex-wrap gap-x-6 gap-y-2'>
                             <RadioItemWithIcon value='1:1' id='ratio-1-1' label='1:1' Icon={Square} />
                             <RadioItemWithIcon value='3:2' id='ratio-3-2' label='3:2' Icon={RectangleHorizontal} />
                             <RadioItemWithIcon value='2:3' id='ratio-2-3' label='2:3' Icon={RectangleVertical} />

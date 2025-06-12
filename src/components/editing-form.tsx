@@ -2,7 +2,7 @@
 
 import { ModeToggle } from '@/components/mode-toggle';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -469,7 +469,7 @@ export function EditingForm({
                             </Button>
                         )}
                     </div>
-                    <CardDescription className='mt-1 text-sm text-muted-foreground'>使用 gpt-image-1 修改图像。</CardDescription>
+                   {/*  <CardDescription className='mt-1 text-sm text-muted-foreground'>使用 gpt-image-1 修改图像。</CardDescription> */}
                 </div>
                 <ModeToggle currentMode={currentMode} onModeChange={onModeChange} />
             </CardHeader>
@@ -693,30 +693,10 @@ export function EditingForm({
                             className='flex flex-wrap gap-x-6 gap-y-3'>
                             <RadioItemWithIcon value='auto' id='edit-size-auto' label='自动' Icon={Sparkles} />
                             <RadioItemWithIcon value='1024x1024' id='edit-size-square' label='1:1' Icon={Square} />
-                            <RadioItemWithIcon
-                                value='1536x1024'
-                                id='edit-size-landscape'
-                                label='3:2'
-                                Icon={RectangleHorizontal}
-                            />
-                            <RadioItemWithIcon
-                                value='1024x1536'
-                                id='edit-size-portrait'
-                                label='2:3'
-                                Icon={RectangleVertical}
-                            />
-                            <RadioItemWithIcon
-                                value='768x1024'
-                                id='edit-size-portrait-3-4'
-                                label='3:4'
-                                Icon={RectangleVertical}
-                            />
-                             <RadioItemWithIcon
-                                value='1024x768'
-                                id='edit-size-landscape-4-3'
-                                label='4:3'
-                                Icon={RectangleHorizontal}
-                            />
+                            <RadioItemWithIcon value='1536x1024' id='edit-size-landscape' label='3:2' Icon={RectangleHorizontal} />
+                            <RadioItemWithIcon value='1024x1536' id='edit-size-portrait' label='2:3' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='768x1024' id='edit-size-portrait-3-4' label='3:4' Icon={RectangleVertical} />
+                            <RadioItemWithIcon value='1024x768' id='edit-size-landscape-4-3' label='4:3' Icon={RectangleHorizontal} />
                         </RadioGroup>
                     </div>
 
