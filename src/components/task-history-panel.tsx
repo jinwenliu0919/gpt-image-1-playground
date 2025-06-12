@@ -22,9 +22,9 @@ import {
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import type { TaskRecord, HistoryMetadata } from '@/lib/types';
+import { ImagePreviewDialog } from '@/components/image-preview-dialog';
 
 interface TaskHistoryPanelProps {
-    onSelectImage: (item: HistoryMetadata) => void;
     onSelectTask: (taskId: string) => void;
 }
 
@@ -38,8 +38,12 @@ const formatDate = (timestamp: number): string => {
     });
 };
 
-export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPanelProps) {
+export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
     const { tasks, history, getImageSrc, handleDeleteHistoryItem } = useHistory();
+    // 添加图片预览状态
+    const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+    const [selectedHistoryItem, setSelectedHistoryItem] = React.useState<HistoryMetadata | null>(null);
+    const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
 
     // 合并任务和历史记录数据，按时间排序
     const combinedItems = React.useMemo(() => {
@@ -58,6 +62,13 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
         return [...taskItems, ...historyItems]
             .sort((a, b) => b.timestamp - a.timestamp);
     }, [tasks, history]);
+
+    // 处理图片点击事件
+    const handleImageClick = (item: HistoryMetadata, imageIndex: number) => {
+        setSelectedHistoryItem(item);
+        setSelectedImageIndex(imageIndex);
+        setPreviewDialogOpen(true);
+    };
 
     const renderTaskItem = (task: TaskRecord) => {
         // 获取任务状态图标
@@ -191,7 +202,7 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
                             return (
                                 <button
                                     key={img.filename}
-                                    onClick={() => onSelectImage(item)}
+                                    onClick={() => handleImageClick(item, index)}
                                     className="relative rounded-md overflow-hidden border border-border/50 hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary flex-shrink-0"
                                 >
                                     <div className="w-32 h-32 md:w-40 md:h-40">
@@ -244,27 +255,38 @@ export function TaskHistoryPanel({ onSelectImage, onSelectTask }: TaskHistoryPan
     };
 
     return (
-        <Card className="w-full h-full flex flex-col overflow-hidden">
-            <CardHeader className="px-4 py-3 border-b border-border flex-shrink-0">
-                <CardTitle className="text-lg font-medium">生成历史</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                {combinedItems.length === 0 ? (
-                    <div className="flex h-full items-center justify-center text-muted-foreground">
-                        <p>生成的图像将显示在这里</p>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-4">
-                        {combinedItems.map((item) => (
-                            <div key={`${item.type}-${item.timestamp}`}>
-                                {item.type === 'task' 
-                                    ? renderTaskItem(item.data) 
-                                    : renderHistoryItem(item.data)}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+        <>
+            <Card className="w-full h-full flex flex-col overflow-hidden">
+                <CardHeader className="px-4 py-3 border-b border-border flex-shrink-0">
+                    <CardTitle className="text-lg font-medium">生成历史</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                    {combinedItems.length === 0 ? (
+                        <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <p>生成的图像将显示在这里</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-4">
+                            {combinedItems.map((item) => (
+                                <div key={`${item.type}-${item.timestamp}`}>
+                                    {item.type === 'task' 
+                                        ? renderTaskItem(item.data) 
+                                        : renderHistoryItem(item.data)}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+            
+            {/* 图片预览对话框 */}
+            <ImagePreviewDialog 
+                isOpen={previewDialogOpen}
+                onClose={() => setPreviewDialogOpen(false)}
+                historyItem={selectedHistoryItem}
+                selectedImageIndex={selectedImageIndex}
+                getImageSrc={getImageSrc}
+            />
+        </>
     );
 }
