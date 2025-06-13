@@ -12,7 +12,7 @@ interface ImagePreviewDialogProps {
   onClose: () => void;
   historyItem: HistoryMetadata | null;
   selectedImageIndex?: number;
-  getImageSrc: (filename: string) => string | undefined;
+  getImageSrc: (filename: string, storageMode?: 'indexeddb' | 's3') => string | undefined;
 }
 
 export function ImagePreviewDialog({
@@ -123,7 +123,7 @@ export function ImagePreviewDialog({
       console.log(`[图片预览] IndexedDB模式 - 获取到URL: ${imageUrl}`);
     } else if (historyItem.storageModeUsed === 's3') {
       // 使用S3 URL
-      imageUrl = getImageSrc(currentImage.filename);
+      imageUrl = getImageSrc(currentImage.filename, historyItem.storageModeUsed);
       console.log(`[图片预览] S3模式 - 获取到URL: ${imageUrl}`);
       
       // 如果getImageSrc没有返回URL但图片对象有url属性，则直接使用它

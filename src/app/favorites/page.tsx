@@ -77,6 +77,8 @@ export default function FavoritesPage() {
                     
                     if (item.storageModeUsed === 'indexeddb') {
                         thumbnailUrl = getImageSrc(firstImage.filename);
+                    } else if (item.storageModeUsed === 's3') {
+                        thumbnailUrl = getImageSrc(firstImage.filename, 's3');
                     } else {
                         thumbnailUrl = `/api/image/${firstImage.filename}`;
                     }
