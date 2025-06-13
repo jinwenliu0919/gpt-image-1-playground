@@ -21,7 +21,8 @@ import {
     Copy,
     Check,
     Star,
-    StarOff
+    StarOff,
+    Bell
 } from 'lucide-react';
 import Image from 'next/image';
 import type { TaskRecord, HistoryMetadata } from '@/lib/types';
@@ -146,6 +147,77 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
 
     // 添加复制提示词状态
     const [copiedItemId, setCopiedItemId] = React.useState<string | null>(null);
+    
+    // 添加通知权限状态
+    const [notificationPermission, setNotificationPermission] = React.useState<NotificationPermission | null>(null);
+    
+    // 记录上一次任务状态的引用
+    const prevTasksRef = React.useRef<TaskRecord[]>([]);
+
+    // 请求通知权限
+    React.useEffect(() => {
+        // 检查浏览器是否支持通知
+        if ("Notification" in window) {
+            setNotificationPermission(Notification.permission);
+            
+            // 如果权限状态是默认的，请求权限
+            if (Notification.permission === "default") {
+                Notification.requestPermission().then(permission => {
+                    setNotificationPermission(permission);
+                });
+            }
+        }
+    }, []);
+
+    // 监听任务状态变化，发送通知
+    React.useEffect(() => {
+        if (notificationPermission !== "granted" || !tasks.length) return;
+        
+        const prevTasks = prevTasksRef.current;
+        
+        // 查找状态发生变化的任务
+        tasks.forEach(task => {
+            const prevTask = prevTasks.find(pt => pt.id === task.id);
+            
+            // 如果找到了之前的任务，且状态发生了变化
+            if (prevTask && prevTask.status !== task.status) {
+                // 只处理从处理中/等待中变为完成或失败的情况
+                if ((prevTask.status === 'pending' || prevTask.status === 'processing') && 
+                    (task.status === 'completed' || task.status === 'failed')) {
+                    
+                    // 发送通知
+                    try {
+                        const title = task.status === 'completed' ? 
+                            '绘图任务已完成' : 
+                            '绘图任务失败';
+                        
+                        const body = task.status === 'completed' ? 
+                            `您的${task.mode === 'edit' ? '图生图' : '文生图'}任务已完成` : 
+                            `您的${task.mode === 'edit' ? '图生图' : '文生图'}任务失败: ${task.error || '未知错误'}`;
+                        
+                        const notification = new Notification(title, {
+                            body: body,
+                            icon: '/favicon.ico',
+                            tag: `task-${task.id}`, // 防止重复通知
+                            requireInteraction: true // 通知会保持显示直到用户交互
+                        });
+                        
+                        // 点击通知时，聚焦窗口并选择该任务
+                        notification.onclick = () => {
+                            window.focus();
+                            onSelectTask(task.id);
+                            notification.close();
+                        };
+                    } catch (error) {
+                        console.error('发送通知失败:', error);
+                    }
+                }
+            }
+        });
+        
+        // 更新上一次的任务状态
+        prevTasksRef.current = [...tasks];
+    }, [tasks, notificationPermission, onSelectTask]);
 
     // 合并任务和历史记录数据，按时间排序
     const combinedItems = React.useMemo(() => {
@@ -503,10 +575,62 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         );
     };
 
+    // 添加请求通知权限按钮
+    const requestNotificationPermission = () => {
+        if ("Notification" in window) {
+            Notification.requestPermission()
+                .then(permission => {
+                    setNotificationPermission(permission);
+                    
+                    // 添加用户反馈
+                    if (permission === "granted") {
+                        // 显示一个测试通知，让用户知道权限已授予
+                        new Notification("通知已开启", {
+                            body: "您将在绘图任务完成或失败时收到通知提醒",
+                            icon: '/favicon.ico'
+                        });
+                    } else if (permission === "denied") {
+                        // 如果用户拒绝了权限，显示一个提示
+                        alert("您已拒绝通知权限。如需开启通知，请在浏览器设置中修改权限设置。");
+                    }
+                })
+                .catch(error => {
+                    console.error("请求通知权限时出错:", error);
+                    alert("请求通知权限失败，请检查浏览器设置或稍后再试。");
+                });
+        } else {
+            alert("您的浏览器不支持通知功能");
+        }
+    };
+
     return (
         <>
             <Card className="w-full h-full flex flex-col overflow-hidden">
                 <CardContent className="flex-grow overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                    {notificationPermission !== "granted" && (
+                        <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Bell size={16} className="text-blue-500" />
+                                    <span className="text-sm">
+                                        {notificationPermission === "denied" 
+                                            ? "通知权限已被拒绝，请在浏览器设置中修改" 
+                                            : "开启通知，在绘图完成时收到提醒"}
+                                    </span>
+                                </div>
+                                {notificationPermission !== "denied" && (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={requestNotificationPermission}
+                                    >
+                                        允许通知
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    
                     {combinedItems.length === 0 ? (
                         <div className="flex h-full items-center justify-center text-muted-foreground bg-background/50">
                             <p>生成的图像将显示在这里</p>
