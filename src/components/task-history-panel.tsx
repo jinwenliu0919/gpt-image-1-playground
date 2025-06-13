@@ -107,6 +107,7 @@ const ImagePreviewErrorFallback = ({ onClose, error, resetErrorBoundary }: {
 
 interface TaskHistoryPanelProps {
     onSelectTask: (taskId: string) => void;
+    onEditTask?: (taskParams: TaskRecord | HistoryMetadata) => void;
 }
 
 const formatDate = (timestamp: number): string => {
@@ -119,7 +120,7 @@ const formatDate = (timestamp: number): string => {
     });
 };
 
-export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
+export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelProps) {
     const {
         tasks,
         history,
@@ -295,6 +296,13 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
         }
     };
 
+    // 处理重新绘制按钮点击
+    const handleEditTask = (taskData: TaskRecord | HistoryMetadata) => {
+        if (onEditTask) {
+            onEditTask(taskData);
+        }
+    };
+
     const renderTaskItem = (task: TaskRecord) => {
         // 获取任务状态图标
         let StatusIcon = Loader2;
@@ -399,6 +407,22 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                             <Copy size={14} className="text-muted-foreground hover:text-primary" />
                         )}
                     </Button>
+                    
+                    {/* 添加重新绘制按钮 */}
+                    {onEditTask && task.status !== 'pending' && task.status !== 'processing' && (
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 flex-shrink-0"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditTask(task);
+                            }}
+                            title="重新绘制"
+                        >
+                            <Pencil size={14} className="text-muted-foreground hover:text-primary" />
+                        </Button>
+                    )}
                 </div>
             </div>
         );
@@ -567,8 +591,30 @@ export function TaskHistoryPanel({ onSelectTask }: TaskHistoryPanelProps) {
                             <Layers size={14} className="text-muted-foreground" />
                             <span className="text-xs text-muted-foreground">{imageCount} 张图片</span>
                         </div>
-
-
+                        
+                        {/* 添加重新绘制按钮 */}
+                        {onEditTask && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditTask(item);
+                                            }}
+                                        >
+                                            <Pencil size={14} className="text-muted-foreground hover:text-blue-400" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        重新绘制
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
                     </div>
                 </div>
             </div>

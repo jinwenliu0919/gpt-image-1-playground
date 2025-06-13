@@ -18,6 +18,10 @@ export type TaskRecord = {
     background?: GenerationFormData['background'];
     moderation?: GenerationFormData['moderation'];
     output_format?: GenerationFormData['output_format'];
+    sourceImageUrls?: string[]; // 临时URL，页面刷新后会失效
+    sourceImages?: { filename: string; }[]; // 添加用于存储原始上传图片的字段
+    n?: number; // 添加图片数量字段
+    size?: string; // 添加尺寸字段
 };
 
 export type HistoryMetadata = {
@@ -33,4 +37,6 @@ export type HistoryMetadata = {
     costDetails: CostDetails | null;
     output_format?: GenerationFormData['output_format'];
     taskId?: string; // 关联的任务ID
+    n?: number; // 添加图片数量字段
+    size?: string; // 添加尺寸字段
 }; 
