@@ -30,13 +30,6 @@ console.log(
     `Client Effective Storage Mode: ${effectiveStorageModeClient} (Explicit: ${explicitModeClient || 'unset'}, Vercel Env: ${vercelEnvClient || 'N/A'})`
 );
 
-type ApiImageResponseItem = {
-    filename: string;
-    b64_json?: string;
-    output_format: string;
-    path?: string;
-};
-
 type DrawnPoint = {
     x: number;
     y: number;
@@ -44,6 +37,12 @@ type DrawnPoint = {
 };
 
 const MAX_EDIT_IMAGES = 10;
+
+// 首先在文件顶部添加TaskData类型定义，包含sourceStorageMode字段
+type TaskData = {
+    sourceImages?: { filename: string; s3Url?: string; }[];
+    sourceStorageMode?: 'fs' | 'indexeddb' | 's3';
+};
 
 export default function HomePage() {
     const [mode, setMode] = React.useState<'generate' | 'edit' | 'completion'>('generate');
@@ -263,7 +262,7 @@ export default function HomePage() {
         let taskN: number = 1;
         let taskSize: string = 'auto';
         const taskSourceImageUrls: string[] = [];
-        const taskData: { sourceImages?: { filename: string }[] } = {};
+        const taskData: TaskData = {};
 
         // 创建一个Promise数组来跟踪所有源图片的保存操作
         const saveSourceImagePromises: Promise<void>[] = [];
@@ -313,6 +312,24 @@ export default function HomePage() {
 
             // 保存源图片
             const sourceImageFilenames: string[] = [];
+            const sourceImageS3Urls: string[] = [];
+            
+            // 确定存储模式
+            let effectiveSourceStorageMode: 'fs' | 'indexeddb' | 's3';
+            const explicitMode = process.env.NEXT_PUBLIC_IMAGE_STORAGE_MODE;
+            const useS3 = process.env.NEXT_PUBLIC_OSS_DOMAIN && (explicitMode === 's3');
+
+            if (explicitMode === 'fs') {
+                effectiveSourceStorageMode = 'fs';
+            } else if (explicitMode === 'indexeddb') {
+                effectiveSourceStorageMode = 'indexeddb';
+            } else if (explicitMode === 's3' || useS3) {
+                effectiveSourceStorageMode = 's3';
+            } else {
+                effectiveSourceStorageMode = 'indexeddb'; // 默认使用IndexedDB
+            }
+            
+            console.log(`[源图片保存] 使用存储模式: ${effectiveSourceStorageMode}`);
             
             // 为每个上传的图片创建一个唯一文件名，并保存到数据库
             for (let i = 0; i < editImageFiles.length; i++) {
@@ -329,44 +346,112 @@ export default function HomePage() {
                 
                 console.log(`[源图片保存] 准备保存源图片: ${sourceFilename}, 类型: ${file.type}, 大小: ${file.size}字节`);
                 
-                // 保存源图片到数据库 - 使用Promise来跟踪保存操作
-                const savePromise = new Promise<void>((resolve, reject) => {
-                    try {
-                        // 读取文件内容
-                        const reader = new FileReader();
-                        reader.onload = async (e) => {
-                            if (e.target?.result instanceof ArrayBuffer) {
-                                try {
-                                    const blob = new Blob([e.target.result], { type: file.type });
-                                    // 保存到sourceImages表
-                                    await db.sourceImages.put({
-                                        filename: sourceFilename,
-                                        taskId: '', // 先用空字符串，后面会更新
-                                        blob: blob
-                                    });
-                                    console.log(`[源图片保存] 成功保存源图片到数据库: ${sourceFilename}`);
-                                    resolve();
-                                } catch (err) {
-                                    console.error('[源图片保存] 保存源图片到数据库失败:', err);
-                                    reject(err);
-                                }
-                            } else {
-                                console.error('[源图片保存] 读取文件结果不是ArrayBuffer');
-                                reject(new Error('读取文件结果不是ArrayBuffer'));
+                // 根据存储模式决定保存方式
+                if (effectiveSourceStorageMode === 's3') {
+                    // S3存储模式 - 上传到S3
+                    const savePromise = new Promise<void>(async (resolve, reject) => {
+                        try {
+                            // 创建FormData用于上传
+                            const uploadFormData = new FormData();
+                            uploadFormData.append('file', file);
+                            uploadFormData.append('filename', sourceFilename);
+                            
+                            // 调用API上传到S3
+                            const response = await fetch('/api/upload-source-image', {
+                                method: 'POST',
+                                body: uploadFormData
+                            });
+                            
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(`上传失败: ${errorData.error || response.statusText}`);
                             }
-                        };
-                        reader.onerror = (err) => {
-                            console.error('[源图片保存] 读取文件失败:', err);
+                            
+                            const result = await response.json();
+                            console.log(`[源图片保存] 成功上传源图片到S3: ${result.url}`);
+                            sourceImageS3Urls.push(result.url);
+                            resolve();
+                        } catch (err) {
+                            console.error('[源图片保存] 上传源图片到S3失败:', err);
+                            
+                            // 如果S3上传失败，回退到IndexedDB存储
+                            try {
+                                console.log('[源图片保存] 尝试回退到IndexedDB存储');
+                                const reader = new FileReader();
+                                reader.onload = async (e) => {
+                                    if (e.target?.result instanceof ArrayBuffer) {
+                                        try {
+                                            const blob = new Blob([e.target.result], { type: file.type });
+                                            // 保存到sourceImages表
+                                            await db.sourceImages.put({
+                                                filename: sourceFilename,
+                                                taskId: '', // 先用空字符串，后面会更新
+                                                blob: blob
+                                            });
+                                            console.log(`[源图片保存] 回退成功：保存源图片到IndexedDB: ${sourceFilename}`);
+                                            resolve();
+                                        } catch (dbErr) {
+                                            console.error('[源图片保存] 回退到IndexedDB失败:', dbErr);
+                                            reject(dbErr);
+                                        }
+                                    } else {
+                                        console.error('[源图片保存] 读取文件结果不是ArrayBuffer');
+                                        reject(new Error('读取文件结果不是ArrayBuffer'));
+                                    }
+                                };
+                                reader.onerror = (err) => {
+                                    console.error('[源图片保存] 读取文件失败:', err);
+                                    reject(err);
+                                };
+                                reader.readAsArrayBuffer(file);
+                            } catch (fallbackErr) {
+                                console.error('[源图片保存] 回退存储失败:', fallbackErr);
+                                reject(fallbackErr);
+                            }
+                        }
+                    });
+                    
+                    saveSourceImagePromises.push(savePromise);
+                } else {
+                    // IndexedDB存储模式 - 保存到浏览器IndexedDB
+                    const savePromise = new Promise<void>((resolve, reject) => {
+                        try {
+                            // 读取文件内容
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                                if (e.target?.result instanceof ArrayBuffer) {
+                                    try {
+                                        const blob = new Blob([e.target.result], { type: file.type });
+                                        // 保存到sourceImages表
+                                        await db.sourceImages.put({
+                                            filename: sourceFilename,
+                                            taskId: '', // 先用空字符串，后面会更新
+                                            blob: blob
+                                        });
+                                        console.log(`[源图片保存] 成功保存源图片到IndexedDB: ${sourceFilename}`);
+                                        resolve();
+                                    } catch (err) {
+                                        console.error('[源图片保存] 保存源图片到数据库失败:', err);
+                                        reject(err);
+                                    }
+                                } else {
+                                    console.error('[源图片保存] 读取文件结果不是ArrayBuffer');
+                                    reject(new Error('读取文件结果不是ArrayBuffer'));
+                                }
+                            };
+                            reader.onerror = (err) => {
+                                console.error('[源图片保存] 读取文件失败:', err);
+                                reject(err);
+                            };
+                            reader.readAsArrayBuffer(file);
+                        } catch (err) {
+                            console.error('[源图片保存] 保存源图片失败:', err);
                             reject(err);
-                        };
-                        reader.readAsArrayBuffer(file);
-                    } catch (err) {
-                        console.error('[源图片保存] 保存源图片失败:', err);
-                        reject(err);
-                    }
-                });
-                
-                saveSourceImagePromises.push(savePromise);
+                        }
+                    });
+                    
+                    saveSourceImagePromises.push(savePromise);
+                }
             }
             
             if (editGeneratedMaskFile) {
@@ -380,7 +465,12 @@ export default function HomePage() {
             
             // 保存源图片文件名到任务记录
             if (sourceImageFilenames.length > 0) {
-                taskData.sourceImages = sourceImageFilenames.map(filename => ({ filename }));
+                // 添加存储方式信息
+                taskData.sourceImages = sourceImageFilenames.map((filename, index) => ({ 
+                    filename,
+                    s3Url: sourceImageS3Urls[index] // 如果是S3存储，则会有对应的URL
+                }));
+                taskData.sourceStorageMode = effectiveSourceStorageMode;
                 console.log(`[源图片保存] 设置任务源图片引用: ${JSON.stringify(taskData.sourceImages)}`);
             }
         }
@@ -476,57 +566,36 @@ export default function HomePage() {
                 const costDetails = calculateApiCost(result.usage);
 
                 const batchTimestamp = Date.now();
-                const newHistoryEntry: HistoryMetadata = {
+                const historyEntry: HistoryMetadata = {
                     timestamp: batchTimestamp,
-                    images: result.images.map((img: { filename: string }) => ({ filename: img.filename })),
-                    storageModeUsed: effectiveStorageModeClient,
+                    images: result.images.map((img: { filename: string; url?: string }) => ({
+                        filename: img.filename,
+                        url: img.url // 确保url字段被保存到历史记录中
+                    })),
+                    storageModeUsed: result.storageMode || effectiveStorageModeClient,
                     durationMs: durationMs,
                     quality: taskQuality,
                     background: taskBackground,
                     moderation: taskModeration,
-                    output_format: taskOutputFormat,
                     prompt: taskPrompt,
                     mode: mode,
                     costDetails: costDetails,
+                    output_format: taskOutputFormat,
                     taskId: taskId,
                     n: taskN,
-                    size: taskSize
+                    size: taskSize,
+                    sourceStorageMode: taskData.sourceStorageMode
                 };
-
-                if (effectiveStorageModeClient === 'indexeddb') {
-                    console.log('Processing images for IndexedDB storage...');
-                    const newImageBatchPromises = result.images.map(async (img: ApiImageResponseItem) => {
-                        if (img.b64_json) {
-                            try {
-                                const byteCharacters = atob(img.b64_json);
-                                const byteNumbers = new Array(byteCharacters.length);
-                                for (let i = 0; i < byteCharacters.length; i++) {
-                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                                }
-                                const byteArray = new Uint8Array(byteNumbers);
-
-                                const actualMimeType = getMimeTypeFromFormat(img.output_format);
-                                const blob = new Blob([byteArray], { type: actualMimeType });
-
-                                await db.images.put({ filename: img.filename, blob });
-                                console.log(`Saved ${img.filename} to IndexedDB with type ${actualMimeType}.`);
-                                return true;
-                            } catch (dbError) {
-                                console.error(`Error saving blob ${img.filename} to IndexedDB:`, dbError);
-                                setError(`Failed to save image ${img.filename} to local database.`);
-                                return false;
-                            }
-                        } else {
-                            console.warn(`Image ${img.filename} missing b64_json in indexeddb mode.`);
-                            return false;
-                        }
-                    });
-
-                    // 等待所有图像处理完成
-                    await Promise.all(newImageBatchPromises);
+                
+                console.log('[保存历史记录] 创建历史记录项:', JSON.stringify(historyEntry, null, 2));
+                
+                // 更新任务状态
+                if (taskId) {
+                    await updateTaskStatus(taskId, 'completed', '任务完成');
+                    await completeTaskWithImages(taskId, historyEntry);
+                } else {
+                    console.error('无法更新任务状态：taskId未定义');
                 }
-
-                await completeTaskWithImages(taskId, newHistoryEntry);
             } else {
                 throw new Error('API response did not contain valid image data or filenames.');
             }
@@ -774,50 +843,102 @@ export default function HomePage() {
             }
             
             // 从数据库加载源图片
-            async function loadSourceImagesFromDB(sourceImages: { filename: string }[]) {
+            async function loadSourceImagesFromDB(sourceImages: { filename: string; s3Url?: string; }[]) {
                 console.log(`[源图片加载] 尝试从数据库加载源图片: ${JSON.stringify(sourceImages)}`);
                 try {
                     const files: File[] = [];
                     const urls: string[] = [];
                     
-                    for (const sourceImage of sourceImages) {
-                        try {
-                            // 从数据库获取源图片
-                            console.log(`[源图片加载] 查询数据库中的源图片: ${sourceImage.filename}`);
-                            const sourceImageRecord = await db.sourceImages.get(sourceImage.filename);
-                            if (sourceImageRecord && sourceImageRecord.blob) {
-                                console.log(`[源图片加载] 找到源图片记录: ${sourceImage.filename}, 类型: ${sourceImageRecord.blob.type}, 大小: ${sourceImageRecord.blob.size}字节`);
-                                
-                                // 创建File对象
-                                const file = new File([sourceImageRecord.blob], sourceImage.filename, { 
-                                    type: sourceImageRecord.blob.type 
-                                });
-                                
-                                // 创建预览URL
-                                const url = URL.createObjectURL(sourceImageRecord.blob);
-                                
-                                files.push(file);
-                                urls.push(url);
-                            } else {
-                                console.warn(`[源图片加载] 在数据库中未找到源图片或blob为空: ${sourceImage.filename}`);
+                    // 检查是否有S3链接
+                    const hasS3Urls = sourceImages.some(img => img.s3Url);
+                    const s3PublicDomain = process.env.NEXT_PUBLIC_OSS_DOMAIN;
+                    
+                    // 如果有S3链接且配置有效，优先使用S3链接
+                    if (hasS3Urls && s3PublicDomain) {
+                        console.log(`[源图片加载] 检测到S3链接，尝试从S3加载`);
+                        
+                        // 从S3链接加载
+                        const s3SourceImages = sourceImages.filter(img => img.s3Url);
+                        if (s3SourceImages.length > 0) {
+                            try {
+                                await Promise.all(s3SourceImages.map(async (sourceImage) => {
+                                    try {
+                                        // 使用S3 URL
+                                        const url = sourceImage.s3Url!;
+                                        console.log(`[源图片加载] 尝试从S3加载: ${url}`);
+                                        
+                                        const response = await fetch(url);
+                                        if (!response.ok) {
+                                            throw new Error(`加载S3图片失败: ${response.status} ${response.statusText}`);
+                                        }
+                                        
+                                        const blob = await response.blob();
+                                        const file = new File([blob], sourceImage.filename, { 
+                                            type: blob.type || 'image/png'
+                                        });
+                                        
+                                        files.push(file);
+                                        // 创建本地预览URL
+                                        const previewUrl = URL.createObjectURL(blob);
+                                        urls.push(previewUrl);
+                                        
+                                        console.log(`[源图片加载] 成功从S3加载: ${sourceImage.filename}`);
+                                    } catch (err) {
+                                        console.error(`[源图片加载] 从S3加载图片失败:`, err);
+                                        // 如果S3加载失败，尝试从IndexedDB加载
+                                        await loadSingleImageFromIndexedDB(sourceImage.filename, files, urls);
+                                    }
+                                }));
+                            } catch (err) {
+                                console.error(`[源图片加载] 从S3批量加载图片失败:`, err);
                             }
-                        } catch (err) {
-                            console.error(`[源图片加载] 加载源图片${sourceImage.filename}失败:`, err);
+                        }
+                    } else {
+                        // 从IndexedDB加载所有图片
+                        for (const sourceImage of sourceImages) {
+                            await loadSingleImageFromIndexedDB(sourceImage.filename, files, urls);
                         }
                     }
                     
                     if (files.length > 0) {
                         // 设置编辑源图片
-                        console.log(`[源图片加载] 成功从数据库加载源图片: ${files.length}张`);
+                        console.log(`[源图片加载] 成功加载源图片: ${files.length}张`);
                         setEditImageFiles(files);
                         setEditSourceImagePreviewUrls(urls);
                     } else {
-                        console.warn('[源图片加载] 没有从数据库加载到源图片，尝试回退方法');
+                        console.warn('[源图片加载] 没有加载到源图片，尝试回退方法');
                         fallbackToResultImage();
                     }
                 } catch (err) {
-                    console.error('[源图片加载] 从数据库加载源图片失败:', err);
+                    console.error('[源图片加载] 加载源图片失败:', err);
                     fallbackToResultImage();
+                }
+            }
+            
+            // 从IndexedDB加载单个图片
+            async function loadSingleImageFromIndexedDB(filename: string, files: File[], urls: string[]) {
+                try {
+                    // 从数据库获取源图片
+                    console.log(`[源图片加载] 查询数据库中的源图片: ${filename}`);
+                    const sourceImageRecord = await db.sourceImages.get(filename);
+                    if (sourceImageRecord && sourceImageRecord.blob) {
+                        console.log(`[源图片加载] 找到源图片记录: ${filename}, 类型: ${sourceImageRecord.blob.type}, 大小: ${sourceImageRecord.blob.size}字节`);
+                        
+                        // 创建File对象
+                        const file = new File([sourceImageRecord.blob], filename, { 
+                            type: sourceImageRecord.blob.type 
+                        });
+                        
+                        // 创建预览URL
+                        const url = URL.createObjectURL(sourceImageRecord.blob);
+                        
+                        files.push(file);
+                        urls.push(url);
+                    } else {
+                        console.warn(`[源图片加载] 在数据库中未找到源图片或blob为空: ${filename}`);
+                    }
+                } catch (err) {
+                    console.error(`[源图片加载] 加载源图片${filename}失败:`, err);
                 }
             }
             
@@ -863,7 +984,7 @@ export default function HomePage() {
                         try {
                             // 从文件系统获取图片URL的函数可能返回undefined
                             const imageUrl = taskData.storageModeUsed === 'indexeddb'
-                                ? getImageSrc(firstImage.filename) // IndexedDB模式
+                                ? getImageSrc(firstImage.filename, taskData.storageModeUsed) // IndexedDB模式
                                 : `/api/image/${firstImage.filename}`; // 文件系统模式
                             
                             console.log(`[回退] 获取到图片URL: ${imageUrl}`);

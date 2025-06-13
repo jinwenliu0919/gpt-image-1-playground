@@ -3,6 +3,7 @@ import type { CostDetails } from '@/lib/cost-utils';
 
 type HistoryImage = {
     filename: string;
+    url?: string; // 添加可选的url属性，用于S3存储模式
 };
 
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
@@ -19,7 +20,8 @@ export type TaskRecord = {
     moderation?: GenerationFormData['moderation'];
     output_format?: GenerationFormData['output_format'];
     sourceImageUrls?: string[]; // 临时URL，页面刷新后会失效
-    sourceImages?: { filename: string; }[]; // 添加用于存储原始上传图片的字段
+    sourceImages?: { filename: string; s3Url?: string; }[]; // 存储原始上传图片的信息
+    sourceStorageMode?: 'fs' | 'indexeddb' | 's3'; // 源图片存储模式
     n?: number; // 添加图片数量字段
     size?: string; // 添加尺寸字段
 };
@@ -27,7 +29,7 @@ export type TaskRecord = {
 export type HistoryMetadata = {
     timestamp: number;
     images: HistoryImage[];
-    storageModeUsed?: 'fs' | 'indexeddb';
+    storageModeUsed?: 'fs' | 'indexeddb' | 's3';
     durationMs: number;
     quality: GenerationFormData['quality'];
     background: GenerationFormData['background'];
@@ -39,4 +41,5 @@ export type HistoryMetadata = {
     taskId?: string; // 关联的任务ID
     n?: number; // 添加图片数量字段
     size?: string; // 添加尺寸字段
+    sourceStorageMode?: 'fs' | 'indexeddb' | 's3'; // 源图片存储模式
 }; 

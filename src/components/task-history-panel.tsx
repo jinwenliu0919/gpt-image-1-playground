@@ -506,6 +506,12 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                             try {
                                 if (originalStorageMode === 'indexeddb') {
                                     thumbnailUrl = getImageSrc(img.filename);
+                                } else if (originalStorageMode === 's3') {
+                                    thumbnailUrl = getImageSrc(img.filename, originalStorageMode);
+                                    // 如果 getImageSrc 没有返回 URL 但图片对象有 url 属性，则直接使用它
+                                    if (!thumbnailUrl && img.url) {
+                                        thumbnailUrl = img.url;
+                                    }
                                 } else {
                                     thumbnailUrl = `/api/image/${img.filename}`;
                                 }

@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import path from 'path';
 import fetch from 'node-fetch';
+import { getS3Service } from '@/lib/s3-service';
+import { lookup } from 'mime-types';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -45,21 +47,26 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Server configuration error: API key not found.' }, { status: 500 });
     }
     try {
-        let effectiveStorageMode: 'fs' | 'indexeddb';
+        let effectiveStorageMode: 'fs' | 'indexeddb' | 's3';
         const explicitMode = process.env.NEXT_PUBLIC_IMAGE_STORAGE_MODE;
         const isOnVercel = process.env.VERCEL === '1';
+        const useS3 = process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY && process.env.S3_BUCKET;
 
         if (explicitMode === 'fs') {
             effectiveStorageMode = 'fs';
         } else if (explicitMode === 'indexeddb') {
             effectiveStorageMode = 'indexeddb';
+        } else if (explicitMode === 's3') {
+            effectiveStorageMode = 's3';
+        } else if (useS3) {
+            effectiveStorageMode = 's3';
         } else if (isOnVercel) {
             effectiveStorageMode = 'indexeddb';
         } else {
             effectiveStorageMode = 'fs';
         }
         console.log(
-            `Effective Image Storage Mode: ${effectiveStorageMode} (Explicit: ${explicitMode || 'unset'}, Vercel: ${isOnVercel})`
+            `Effective Image Storage Mode: ${effectiveStorageMode} (Explicit: ${explicitMode || 'unset'}, Vercel: ${isOnVercel}, S3 Config: ${useS3 ? 'available' : 'unavailable'})`
         );
 
         if (effectiveStorageMode === 'fs') {
@@ -214,6 +221,26 @@ export async function POST(request: NextRequest) {
                         console.log(`Attempting to save image to: ${filepath}`);
                         await fs.writeFile(filepath, buffer);
                         console.log(`Successfully saved image: ${filename}`);
+                    } else if (effectiveStorageMode === 's3') {
+                        try {
+                            // 使用S3服务保存图片
+                            const contentType = lookup(filename) || 'image/png';
+                            const s3 = getS3Service();
+                            const s3Url = await s3.uploadFile(buffer, filename, contentType);
+                            console.log(`Successfully uploaded image to S3: ${s3Url}`);
+                            
+                            const imageResult: { filename: string; b64_json: string; path?: string; url?: string; output_format: string } = {
+                                filename: filename,
+                                b64_json: imageData.b64_json,
+                                url: s3Url,
+                                output_format: fileExtension
+                            };
+                            
+                            return imageResult;
+                        } catch (s3Error) {
+                            console.error('Error uploading to S3:', s3Error);
+                            throw new Error(`Failed to upload image to S3: ${s3Error instanceof Error ? s3Error.message : String(s3Error)}`);
+                        }
                     }
 
                     const imageResult: { filename: string; b64_json: string; path?: string; url?: string; output_format: string } = {
@@ -246,6 +273,32 @@ export async function POST(request: NextRequest) {
                             console.error(`Error downloading image from URL: ${imageData.url}`, downloadError);
                             throw new Error(`Failed to download image from URL: ${downloadError instanceof Error ? downloadError.message : String(downloadError)}`);
                         }
+                    } else if (effectiveStorageMode === 's3') {
+                        try {
+                            // 下载图片并上传到S3
+                            const response = await fetch(imageData.url);
+                            if (!response.ok) {
+                                throw new Error(`Failed to download image from URL: ${response.status} ${response.statusText}`);
+                            }
+                            const buffer = await response.buffer();
+                            
+                            // 使用S3服务保存图片
+                            const contentType = lookup(filename) || 'image/png';
+                            const s3 = getS3Service();
+                            const s3Url = await s3.uploadFile(buffer, filename, contentType);
+                            console.log(`Successfully uploaded image from URL to S3: ${s3Url}`);
+                            
+                            const imageResult: { filename: string; url: string; output_format: string } = {
+                                filename: filename,
+                                url: s3Url,
+                                output_format: fileExtension
+                            };
+                            
+                            return imageResult;
+                        } catch (s3Error) {
+                            console.error('Error uploading to S3:', s3Error);
+                            throw new Error(`Failed to upload image to S3: ${s3Error instanceof Error ? s3Error.message : String(s3Error)}`);
+                        }
                     }
                     
                     const imageResult: { filename: string; url: string; path?: string; output_format: string } = {
@@ -267,8 +320,9 @@ export async function POST(request: NextRequest) {
         );
 
         console.log(`All images processed. Mode: ${effectiveStorageMode}`);
+        console.log('返回给前端的图片数据:', JSON.stringify(savedImagesData, null, 2));
 
-        return NextResponse.json({ images: savedImagesData, usage: result.usage });
+        return NextResponse.json({ images: savedImagesData, usage: result.usage, storageMode: effectiveStorageMode });
     } catch (error: unknown) {
         console.error('Error in /api/images:', error);
 

@@ -111,10 +111,29 @@ export function ImagePreviewDialog({
   // 获取当前图片的URL
   let imageUrl: string | undefined;
   try {
+    console.log(`[图片预览] 当前图片信息:`, {
+      filename: currentImage.filename,
+      storageModeUsed: historyItem.storageModeUsed,
+      hasUrl: !!currentImage.url,
+      url: currentImage.url
+    });
+    
     if (historyItem.storageModeUsed === 'indexeddb') {
       imageUrl = getImageSrc(currentImage.filename);
+      console.log(`[图片预览] IndexedDB模式 - 获取到URL: ${imageUrl}`);
+    } else if (historyItem.storageModeUsed === 's3') {
+      // 使用S3 URL
+      imageUrl = getImageSrc(currentImage.filename);
+      console.log(`[图片预览] S3模式 - 获取到URL: ${imageUrl}`);
+      
+      // 如果getImageSrc没有返回URL但图片对象有url属性，则直接使用它
+      if (!imageUrl && currentImage.url) {
+        imageUrl = currentImage.url;
+        console.log(`[图片预览] S3模式 - 使用图片对象自带的URL: ${imageUrl}`);
+      }
     } else {
       imageUrl = `/api/image/${currentImage.filename}`;
+      console.log(`[图片预览] 文件系统模式 - 使用API路径: ${imageUrl}`);
     }
   } catch (error) {
     console.error('获取图片URL时出错:', error);

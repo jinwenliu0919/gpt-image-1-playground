@@ -11,11 +11,13 @@ const explicitModeClient = process.env.NEXT_PUBLIC_IMAGE_STORAGE_MODE;
 const vercelEnvClient = process.env.NEXT_PUBLIC_VERCEL_ENV;
 const isOnVercelClient = vercelEnvClient === 'production' || vercelEnvClient === 'preview';
 
-let effectiveStorageModeClient: 'fs' | 'indexeddb';
+let effectiveStorageModeClient: 'fs' | 'indexeddb' | 's3';
 if (explicitModeClient === 'fs') {
     effectiveStorageModeClient = 'fs';
 } else if (explicitModeClient === 'indexeddb') {
     effectiveStorageModeClient = 'indexeddb';
+} else if (explicitModeClient === 's3') {
+    effectiveStorageModeClient = 's3';
 } else if (isOnVercelClient) {
     effectiveStorageModeClient = 'indexeddb';
 } else {
@@ -25,6 +27,9 @@ console.log(
     `HistoryContext Effective Storage Mode: ${effectiveStorageModeClient} (Explicit: ${explicitModeClient || 'unset'}, Vercel Env: ${vercelEnvClient || 'N/A'})`
 );
 
+// 获取S3公共域名
+const s3PublicDomain = process.env.NEXT_PUBLIC_OSS_DOMAIN;
+
 type HistoryContextType = {
     history: HistoryMetadata[];
     tasks: TaskRecord[];
@@ -32,7 +37,7 @@ type HistoryContextType = {
     favoriteItems: HistoryMetadata[];
     addHistoryEntry: (entry: HistoryMetadata) => void;
     clearHistory: () => void;
-    getImageSrc: (filename: string) => string | undefined;
+    getImageSrc: (filename: string, storageMode?: 'indexeddb' | 's3') => string | undefined;
     handleHistorySelect: (item: HistoryMetadata) => void;
     handleDeleteHistoryItem: (item: HistoryMetadata) => void;
     itemToDeleteConfirm: HistoryMetadata | null;
@@ -89,8 +94,19 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
     }, [history, favorites]);
 
     const getImageSrc = React.useCallback(
-        (filename: string): string | undefined => {
+        (filename: string, storageMode?: 'indexeddb' | 's3'): string | undefined => {
+            console.log(`[getImageSrc] 开始获取图片URL: ${filename}, 存储模式: ${storageMode || '未配置'}, S3域名: ${s3PublicDomain || '未配置'}`);
+            
+            // S3存储模式下直接返回S3 URL
+            if (storageMode === 's3' && s3PublicDomain) {
+                const s3Url = `${s3PublicDomain}/${filename}`;
+                console.log(`[getImageSrc] 返回S3 URL: ${s3Url}`);
+                return s3Url;
+            }
+            
+            // IndexedDB模式
             if (blobUrlCache[filename]) {
+                console.log(`[getImageSrc] 返回缓存的Blob URL: ${blobUrlCache[filename]}`);
                 return blobUrlCache[filename];
             }
 
@@ -100,12 +116,14 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
                 // NOTE: This technically breaks the rules of hooks/renders, but it's for a cache.
                 // It's a pragmatic solution to avoid re-renders.
                 setBlobUrlCache((prev) => ({...prev, [filename]: url}));
+                console.log(`[getImageSrc] 创建并返回新的Blob URL: ${url}`);
                 return url;
             }
 
+            console.log(`[getImageSrc] 未找到图片: ${filename}`);
             return undefined;
         },
-        [allDbImages, blobUrlCache]
+        [allDbImages, blobUrlCache, effectiveStorageModeClient, s3PublicDomain]
     );
 
     React.useEffect(() => {
@@ -188,12 +206,19 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         console.log(
             `Selecting history item from ${new Date(item.timestamp).toISOString()}, stored via: ${item.storageModeUsed}`
         );
-        const originalStorageMode = item.storageModeUsed || 'fs';
+        const originalStorageMode = item.storageModeUsed || 'fs' as 'fs' | 'indexeddb' | 's3';
 
         const selectedBatchPromises = item.images.map(async (imgInfo) => {
             let path: string | undefined;
             if (originalStorageMode === 'indexeddb') {
                 path = getImageSrc(imgInfo.filename);
+            } else if (originalStorageMode === 's3') {
+                // S3存储时直接使用公共URL或通过API获取
+                if (s3PublicDomain) {
+                    path = `${s3PublicDomain}/${imgInfo.filename}`;
+                } else {
+                    path = `/api/s3-image/${imgInfo.filename}`;
+                }
             } else {
                 path = `/api/image/${imgInfo.filename}`;
             }
