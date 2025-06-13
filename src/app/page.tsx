@@ -428,6 +428,7 @@ export default function HomePage() {
             console.error(`API Call Error after ${durationMs}ms:`, err);
             const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
             setError(errorMessage);
+            await updateTaskStatus(taskId, 'failed', errorMessage);
         }
     };
 
