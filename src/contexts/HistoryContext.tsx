@@ -99,7 +99,7 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
             
             // S3存储模式下直接返回S3 URL
             if (storageMode === 's3' && s3PublicDomain) {
-                const s3Url = `${s3PublicDomain}/${filename}`;
+                const s3Url = `${s3PublicDomain}/dreamImage/${filename}`;
                 console.log(`[getImageSrc] 返回S3 URL: ${s3Url}`);
                 return s3Url;
             }

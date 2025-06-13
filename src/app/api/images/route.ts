@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
                             // 使用S3服务保存图片
                             const contentType = lookup(filename) || 'image/png';
                             const s3 = getS3Service();
-                            const s3Url = await s3.uploadFile(buffer, filename, contentType);
+                            const s3Url = await s3.uploadFile(buffer, `dreamImage/${filename}`, contentType);
                             console.log(`Successfully uploaded image to S3: ${s3Url}`);
                             
                             const imageResult: { filename: string; b64_json: string; path?: string; url?: string; output_format: string } = {
@@ -278,14 +278,20 @@ export async function POST(request: NextRequest) {
                             // 下载图片并上传到S3
                             const response = await fetch(imageData.url);
                             if (!response.ok) {
-                                throw new Error(`Failed to download image from URL: ${response.status} ${response.statusText}`);
+                                console.log(`无法下载图片，直接返回原始URL: ${imageData.url}`);
+                                return {
+                                    filename: filename,
+                                    url: imageData.url,
+                                    output_format: fileExtension,
+                                    original: true // 标记这是原始URL
+                                };
                             }
                             const buffer = await response.buffer();
                             
                             // 使用S3服务保存图片
                             const contentType = lookup(filename) || 'image/png';
                             const s3 = getS3Service();
-                            const s3Url = await s3.uploadFile(buffer, filename, contentType);
+                            const s3Url = await s3.uploadFile(buffer, `dreamImage/${filename}`, contentType);
                             console.log(`Successfully uploaded image from URL to S3: ${s3Url}`);
                             
                             const imageResult: { filename: string; url: string; output_format: string } = {
@@ -296,8 +302,13 @@ export async function POST(request: NextRequest) {
                             
                             return imageResult;
                         } catch (s3Error) {
-                            console.error('Error uploading to S3:', s3Error);
-                            throw new Error(`Failed to upload image to S3: ${s3Error instanceof Error ? s3Error.message : String(s3Error)}`);
+                            console.error('从URL下载或上传到S3失败，直接返回原始URL:', s3Error);
+                            return {
+                                filename: filename,
+                                url: imageData.url,
+                                output_format: fileExtension,
+                                original: true // 标记这是原始URL
+                            };
                         }
                     }
                     

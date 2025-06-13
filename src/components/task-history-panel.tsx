@@ -33,15 +33,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 // 添加错误边界组件
 class ErrorBoundary extends React.Component<
-    { 
-        children: React.ReactNode, 
-        fallback: React.ReactNode | ((props: { error: Error | null, resetErrorBoundary: () => void }) => React.ReactNode) 
+    {
+        children: React.ReactNode,
+        fallback: React.ReactNode | ((props: { error: Error | null, resetErrorBoundary: () => void }) => React.ReactNode)
     },
     { hasError: boolean, error: Error | null }
 > {
-    constructor(props: { 
-        children: React.ReactNode, 
-        fallback: React.ReactNode | ((props: { error: Error | null, resetErrorBoundary: () => void }) => React.ReactNode) 
+    constructor(props: {
+        children: React.ReactNode,
+        fallback: React.ReactNode | ((props: { error: Error | null, resetErrorBoundary: () => void }) => React.ReactNode)
     }) {
         super(props);
         this.state = { hasError: false, error: null };
@@ -79,10 +79,10 @@ class ErrorBoundary extends React.Component<
 }
 
 // 错误回退组件
-const ImagePreviewErrorFallback = ({ onClose, error, resetErrorBoundary }: { 
-    onClose: () => void, 
-    error: Error | null, 
-    resetErrorBoundary?: () => void 
+const ImagePreviewErrorFallback = ({ onClose, error, resetErrorBoundary }: {
+    onClose: () => void,
+    error: Error | null,
+    resetErrorBoundary?: () => void
 }) => {
     return (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
@@ -148,10 +148,10 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
 
     // 添加复制提示词状态
     const [copiedItemId, setCopiedItemId] = React.useState<string | null>(null);
-    
+
     // 添加通知权限状态
     const [notificationPermission, setNotificationPermission] = React.useState<NotificationPermission | null>(null);
-    
+
     // 记录上一次任务状态的引用
     const prevTasksRef = React.useRef<TaskRecord[]>([]);
 
@@ -160,7 +160,7 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
         // 检查浏览器是否支持通知
         if ("Notification" in window) {
             setNotificationPermission(Notification.permission);
-            
+
             // 如果权限状态是默认的，请求权限
             if (Notification.permission === "default") {
                 Notification.requestPermission().then(permission => {
@@ -173,36 +173,36 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
     // 监听任务状态变化，发送通知
     React.useEffect(() => {
         if (notificationPermission !== "granted" || !tasks.length) return;
-        
+
         const prevTasks = prevTasksRef.current;
-        
+
         // 查找状态发生变化的任务
         tasks.forEach(task => {
             const prevTask = prevTasks.find(pt => pt.id === task.id);
-            
+
             // 如果找到了之前的任务，且状态发生了变化
             if (prevTask && prevTask.status !== task.status) {
                 // 只处理从处理中/等待中变为完成或失败的情况
-                if ((prevTask.status === 'pending' || prevTask.status === 'processing') && 
+                if ((prevTask.status === 'pending' || prevTask.status === 'processing') &&
                     (task.status === 'completed' || task.status === 'failed')) {
-                    
+
                     // 发送通知
                     try {
-                        const title = task.status === 'completed' ? 
-                            '绘图任务已完成' : 
+                        const title = task.status === 'completed' ?
+                            '绘图任务已完成' :
                             '绘图任务失败';
-                        
-                        const body = task.status === 'completed' ? 
-                            `您的${task.mode === 'edit' ? '图生图' : '文生图'}任务已完成` : 
+
+                        const body = task.status === 'completed' ?
+                            `您的${task.mode === 'edit' ? '图生图' : '文生图'}任务已完成` :
                             `您的${task.mode === 'edit' ? '图生图' : '文生图'}任务失败: ${task.error || '未知错误'}`;
-                        
+
                         const notification = new Notification(title, {
                             body: body,
                             icon: '/favicon.ico',
                             tag: `task-${task.id}`, // 防止重复通知
                             requireInteraction: true // 通知会保持显示直到用户交互
                         });
-                        
+
                         // 点击通知时，聚焦窗口并选择该任务
                         notification.onclick = () => {
                             window.focus();
@@ -215,7 +215,7 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                 }
             }
         });
-        
+
         // 更新上一次的任务状态
         prevTasksRef.current = [...tasks];
     }, [tasks, notificationPermission, onSelectTask]);
@@ -382,18 +382,8 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                 <div className="flex items-center gap-2 mt-2">
                     <Button
                         variant="ghost"
-                        size="sm"
-                        className="flex-grow text-xs"
-                        onClick={() => onSelectTask(task.id)}
-                        disabled={task.status === 'pending' || task.status === 'processing'}
-                    >
-                        {task.status === 'completed' ? '查看结果' : task.status === 'failed' ? '查看详情' : '等待中...'}
-                    </Button>
-
-                    <Button
-                        variant="ghost"
                         size="icon"
-                        className="h-7 w-7 flex-shrink-0"
+                        className="h-7 w-[80px] flex-shrink-0"
                         onClick={(e) => {
                             e.stopPropagation();
                             handleCopyPrompt(task.prompt, taskItemId);
@@ -402,27 +392,45 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                         disabled={!task.prompt}
                     >
                         {copiedItemId === taskItemId ? (
-                            <Check size={14} className="text-green-500" />
+                            <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                <Check size={10} className="text-green-500" />
+                                <span>已复制</span>
+                            </div>
                         ) : (
-                            <Copy size={14} className="text-muted-foreground hover:text-primary" />
+                            <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                <Copy size={10} className='text-card-foreground/40' />
+                                <span>复制提示词</span>
+                            </div>
                         )}
                     </Button>
-                    
+
                     {/* 添加重新绘制按钮 */}
-                    {onEditTask && task.status !== 'pending' && task.status !== 'processing' && (
+                    {onEditTask && (
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
-                            className="h-7 w-7 flex-shrink-0"
+                            className="h-7 w-[60px] flex-shrink-0"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditTask(task);
                             }}
                             title="重新绘制"
                         >
-                            <Pencil size={14} className="text-muted-foreground hover:text-primary" />
+                            <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                <Pencil size={14} className="text-muted-foreground hover:text-primary" />
+                                <span>重新绘制</span>
+                            </div>
                         </Button>
                     )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-grow text-xs"
+                        onClick={() => onSelectTask(task.id)}
+                        disabled={task.status === 'pending' || task.status === 'processing'}
+                    >
+                        {task.status === 'completed' ? '查看结果' : task.status === 'failed' ? '查看详情' : '等待中...'}
+                    </Button>
                 </div>
             </div>
         );
@@ -590,14 +598,7 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                                 )}
                             </Button>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                            <Layers size={14} className="text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">{imageCount} 张图片</span>
-                        </div>
-                        
                         {/* 添加重新绘制按钮 */}
                         {onEditTask && (
                             <TooltipProvider>
@@ -606,13 +607,16 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6"
+                                            className="h-6 w-[60px]"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleEditTask(item);
                                             }}
                                         >
-                                            <Pencil size={14} className="text-muted-foreground hover:text-blue-400" />
+                                            <div className='flex items-center gap-1 rounded-full bg-card/80 px-1 py-0.5 text-[10px] text-card-foreground/70'>
+                                                <Pencil size={14} className="text-muted-foreground hover:text-blue-400" />
+                                                <span>重新绘制</span>
+                                            </div>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -621,6 +625,15 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                                 </Tooltip>
                             </TooltipProvider>
                         )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                            <Layers size={14} className="text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{imageCount} 张图片</span>
+                        </div>
+
+
                     </div>
                 </div>
             </div>
@@ -633,7 +646,7 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
             Notification.requestPermission()
                 .then(permission => {
                     setNotificationPermission(permission);
-                    
+
                     // 添加用户反馈
                     if (permission === "granted") {
                         // 显示一个测试通知，让用户知道权限已授予
@@ -665,15 +678,15 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                                 <div className="flex items-center gap-2">
                                     <Bell size={16} className="text-blue-500" />
                                     <span className="text-sm">
-                                        {notificationPermission === "denied" 
-                                            ? "通知权限已被拒绝，请在浏览器设置中修改" 
+                                        {notificationPermission === "denied"
+                                            ? "通知权限已被拒绝，请在浏览器设置中修改"
                                             : "开启通知，在绘图完成时收到提醒"}
                                     </span>
                                 </div>
                                 {notificationPermission !== "denied" && (
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={requestNotificationPermission}
                                     >
                                         允许通知
@@ -682,7 +695,7 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
                             </div>
                         </div>
                     )}
-                    
+
                     {combinedItems.length === 0 ? (
                         <div className="flex h-full items-center justify-center text-muted-foreground bg-background/50">
                             <p>生成的图像将显示在这里</p>
@@ -702,11 +715,11 @@ export function TaskHistoryPanel({ onSelectTask, onEditTask }: TaskHistoryPanelP
             </Card>
 
             {/* 使用错误边界包裹图片预览对话框 */}
-            <ErrorBoundary 
+            <ErrorBoundary
                 fallback={({ error, resetErrorBoundary }) => (
-                    <ImagePreviewErrorFallback 
-                        onClose={() => setPreviewDialogOpen(false)} 
-                        error={error} 
+                    <ImagePreviewErrorFallback
+                        onClose={() => setPreviewDialogOpen(false)}
+                        error={error}
                         resetErrorBoundary={resetErrorBoundary}
                     />
                 )}
